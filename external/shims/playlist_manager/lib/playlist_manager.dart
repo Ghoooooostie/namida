@@ -306,8 +306,19 @@ abstract class PlaylistManager<E, T, S> {
 
   List<GeneralPlaylist<E, S>> get playlistsList => playlistsMap.value.values.toList();
 
+  /// set in [prepareAllPlaylistsFile]'s finally, whether or not any playlist
+  /// was actually loaded. callers waiting on [waitForPlaylistsLoad] must not
+  /// hang when the user simply has no local playlists (playlistsMap empty).
+  bool _playlistsLoadCompleted = false;
+  bool get playlistsLoadCompleted => _playlistsLoadCompleted;
+
   Future<void> get waitForPlaylistsLoad async {
-    while (!isPlaylistsLoaded) {
+    // -- playlistsMap staying empty is a legitimate outcome (no local
+    // -- playlists / fresh install), so polling on isPlaylistsLoaded alone
+    // -- used to spin forever and deadlock the whole library refresh
+    // -- (isIndexing never reset -> every refresh blocked).
+    final deadline = DateTime.now().add(const Duration(seconds: 30));
+    while (!isPlaylistsLoaded && !_playlistsLoadCompleted && DateTime.now().isBefore(deadline)) {
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
   }
@@ -636,15 +647,21 @@ abstract class PlaylistManager<E, T, S> {
 
   Future<void> prepareAllPlaylistsFile() async {
     isLoading.value = true;
-    final map = await prepareAllPlaylistsFunction();
-    playlistsMap.value = map;
-    final loadedFavourite = await prepareFavouritePlaylistFunction() ?? map[PLAYLIST_NAME_FAV];
-    favouritesPlaylist.value = FavouritePlaylist<E, T, S>(
-      name: loadedFavourite?.name ?? PLAYLIST_NAME_FAV,
-      tracks: loadedFavourite?.tracks ?? const [],
-      identifyBy: identifyBy,
-    );
-    isLoading.value = false;
+    try {
+      final map = await prepareAllPlaylistsFunction();
+      playlistsMap.value = map;
+      final loadedFavourite = await prepareFavouritePlaylistFunction() ?? map[PLAYLIST_NAME_FAV];
+      favouritesPlaylist.value = FavouritePlaylist<E, T, S>(
+        name: loadedFavourite?.name ?? PLAYLIST_NAME_FAV,
+        tracks: loadedFavourite?.tracks ?? const [],
+        identifyBy: identifyBy,
+      );
+    } finally {
+      // -- must complete even if the load threw, else waitForPlaylistsLoad
+      // -- polls forever with isLoading stuck true.
+      _playlistsLoadCompleted = true;
+      isLoading.value = false;
+    }
   }
 }
 

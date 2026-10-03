@@ -228,11 +228,15 @@ class Indexer<T extends Track> {
       isIndexing.value = true;
       // -- only block load if the track file exists..
       await _readTrackData(completer);
+      debugPrint('Indexer.prepare: track data read (${tracksInfoList.length} tracks)');
       await sortMediaTracksAndSubListsAfterHistoryPrepared();
+      debugPrint('Indexer.prepare: history-dependent sorts done');
       await _sortAll();
+      debugPrint('Indexer.prepare: sortAll done');
       isIndexing.value = false;
 
       if (settings.refreshOnStartup.value) {
+        debugPrint('Indexer.prepare: starting startup refresh');
         this.refreshLibraryAndCheckForDiff(allowDeletion: false, showFinishedSnackbar: false);
       } else {
         // main reason is to refresh fallback cover
@@ -322,31 +326,45 @@ class Indexer<T extends Track> {
     _indexingDoneCount.value = 0;
     _indexingTotalCount.value = 0;
     isIndexing.value = true;
-    useMediaStore ??= _defaultUseMediaStore;
+    debugPrint('Indexer.refresh: entered (isIndexing set, currentFiles=${currentFiles != null ? "provided" : "null"})');
 
     IndexerFilesDiff? differenceStats;
+    // -- [isIndexing] gates every refresh attempt (incl. the spinner in the
+    // -- refresh prompt dialog), so it must NEVER stay true on a failure --
+    // -- previously one thrown error here silently killed all future refreshes.
+    try {
+      useMediaStore ??= _defaultUseMediaStore;
 
-    if (forceReIndex || tracksInfoList.isEmpty) {
-      await _fetchAllSongsAndWriteToFile(
-        filesDiff: null,
-        forceReIndex: true,
-        useMediaStore: useMediaStore,
-      );
-    } else {
-      currentFiles ??= await getAudioFilesForRefresh();
-      final difference = getPathsDifference(currentFiles);
-      differenceStats = allowDeletion ? difference : difference.withoutDeletedPaths();
+      if (forceReIndex || tracksInfoList.isEmpty) {
+        await _fetchAllSongsAndWriteToFile(
+          filesDiff: null,
+          forceReIndex: true,
+          useMediaStore: useMediaStore,
+        );
+      } else {
+        currentFiles ??= await getAudioFilesForRefresh();
+        debugPrint('Indexer.refresh: walk returned ${currentFiles.allPaths.length} paths');
+        final difference = getPathsDifference(currentFiles);
+        debugPrint('Indexer.refresh: diff new=${difference.newPaths.length} modified=${difference.modifiedPaths.length} deleted=${difference.deletedPaths.length}');
+        differenceStats = allowDeletion ? difference : difference.withoutDeletedPaths();
 
-      await _fetchAllSongsAndWriteToFile(
-        filesDiff: differenceStats,
-        forceReIndex: false,
-        useMediaStore: useMediaStore,
-      );
+        await _fetchAllSongsAndWriteToFile(
+          filesDiff: differenceStats,
+          forceReIndex: false,
+          useMediaStore: useMediaStore,
+        );
+      }
+
+      await _afterIndexing();
+      debugPrint('Indexer.refresh: afterIndexing done');
+      await _tracksDBManager.checkpoint().ignoreError();
+      debugPrint('Indexer.refresh: checkpoint done');
+    } catch (e, st) {
+      printy('refreshLibraryAndCheckForDiff failed: $e\n$st', isError: true);
+      debugPrint('Indexer.refresh: FAILED $e');
+    } finally {
+      isIndexing.value = false;
     }
-
-    await _afterIndexing();
-    await _tracksDBManager.checkpoint().ignoreError();
-    isIndexing.value = false;
 
     final isEmpty = tracksInfoList.value.isEmpty;
     if (showFinishedSnackbar || isEmpty) {
@@ -413,16 +431,24 @@ class Indexer<T extends Track> {
   /// Adds all tracks inside [tracksInfoList] to their respective album, artist, etc..
   /// & sorts all media.
   Future<void> _afterIndexing() async {
+    debugPrint('Indexer.afterIndexing: entered');
     final mediaSorters = {for (final e in MediaType.values) e: SearchSortController.inst.getMediaTracksSortingComparables(e)};
+    debugPrint('Indexer.afterIndexing: 1 sorters built');
     this.mainMapsGroup.fillAll(tracksInfoList.value, (tr) => tr.toTrackExt(), settings.albumIdentifiers.value);
+    debugPrint('Indexer.afterIndexing: 2 fillAll done');
     this.mainMapsGroup.sortAllSync(mediaSorters, settings.mediaItemsTrackSortingReverse.value, tracksInfoList.value);
+    debugPrint('Indexer.afterIndexing: 3 sortAllSync done');
     this.mainMapsGroup.refreshAll();
+    debugPrint('Indexer.afterIndexing: 4 refreshAll done');
     FoldersController.tracksAndVideos.onMapChanged(mainMapFoldersTracksAndVideos.value);
     FoldersController.tracks.onMapChanged(mainMapFoldersTracks.value);
     FoldersController.videos.onMapChanged(mainMapFoldersVideos.value);
+    debugPrint('Indexer.afterIndexing: 5 folders done');
     _refreshMediaTracksSubListsAfterSort(mediaSorters.keys);
+    debugPrint('Indexer.afterIndexing: 6 sublists done');
 
     await _sortAll();
+    debugPrint('Indexer.afterIndexing: 7 sortAll done');
   }
 
   Future<void> sortMediaTracksSubLists(List<MediaType> medias) async {
@@ -1343,6 +1369,7 @@ class Indexer<T extends Track> {
     required bool useMediaStore,
   }) async {
     _resetCounters();
+    debugPrint('Indexer.fetchAll: entered (new=${filesDiff?.newPaths.length ?? 0} mod=${filesDiff?.modifiedPaths.length ?? 0} del=${filesDiff?.deletedPaths.length ?? 0})');
     final serversFetchQueue = _startServersTracksCountFetch();
 
     if (forceReIndex) {
@@ -1401,6 +1428,7 @@ class Indexer<T extends Track> {
       final finalAudios = prevDuplicated ? audioFilesWithoutDuplicates : audioFiles.toList();
       final filesToExtractCount = finalAudios.length + modifiedFiles.length;
       _indexingTotalCount.value += filesToExtractCount;
+      debugPrint('Indexer.fetchAll: extracting $filesToExtractCount files');
       int listParts;
       const int listPartsMultiplier = 30; // more is okay with taglib, most work is io
       if (Platform.isAndroid || Platform.isIOS) {
@@ -1464,6 +1492,7 @@ class Indexer<T extends Track> {
       }
 
       await extractAllInParts(finalAudios, isModified: false);
+      debugPrint('Indexer.fetchAll: audio extraction done');
       if (modifiedFiles.isNotEmpty) {
         Indexer.clearMemoryImageCache();
         final modifiedAudios = modifiedFiles.toList();
@@ -1472,6 +1501,7 @@ class Indexer<T extends Track> {
     }
 
     final networkTrackMapsToRemove = await _addServerTracksIfAvailable(serversFetchQueue, forceReIndex: forceReIndex).toList();
+    debugPrint('Indexer.fetchAll: server tracks stream closed (${networkTrackMapsToRemove.length})');
 
     /// doing some checks to remove unqualified tracks.
     /// removes tracks after changing `duration` or `size`.
@@ -2358,6 +2388,17 @@ class Indexer<T extends Track> {
     final result = await dirsFilterer.filter();
 
     final allPaths = result.allPaths;
+
+    // -- every scan root failed to list: the app effectively has no storage
+    // -- access (All-Files-Access gets reset by app updates on some ROMs).
+    // -- warn loudly instead of silently "refreshing" an empty library.
+    if (allPaths.isEmpty && result.failedScanRoots.isNotEmpty) {
+      snackyy(
+        title: lang.storagePermissionDenied,
+        message: lang.storagePermissionDeniedSubtitle,
+        isError: true,
+      );
+    }
 
     allAudioFiles.value = allPaths;
     tracksExcludedByNoMedia.value += result.excludedByNoMedia.length;

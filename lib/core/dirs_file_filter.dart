@@ -4,6 +4,7 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'package:namida/class/folder.dart';
 import 'package:namida/controller/directory_index.dart';
@@ -38,12 +39,21 @@ class DirsFileFilter {
        _respectNoMedia = settings.respectNoMedia.value;
 
   Future<DirsFileFilterResult> filter() async {
-    return await Isolate.run(() => _filterIsolate(this));
+    debugPrint('DirsFileFilter.filter: entered');
+    try {
+      final res = await Isolate.run(() => _filterIsolate(this)).timeout(const Duration(minutes: 2));
+      debugPrint('DirsFileFilter.filter: done, ${res.allPaths.length} paths');
+      return res;
+    } catch (e, st) {
+      debugPrint('DirsFileFilter.filter: FAILED $e\n$st');
+      rethrow;
+    }
   }
 
   Future<DirsFileFilterResult> filterSync() => _filterIsolate(this);
 
   static Future<DirsFileFilterResult> _filterIsolate(DirsFileFilter parameters) async {
+    debugPrint('DirsFileFilter._filterIsolate: walking ${parameters._directoriesToScan.length} roots');
     if (parameters.useNativeLister && Platform.isWindows) {
       try {
         final walker = _WindowsDirsWalker(parameters);
@@ -51,7 +61,9 @@ class DirsFileFilter {
       } catch (_) {}
     }
     final walker = _DartDirsWalker(parameters);
-    return walker.walk();
+    final res = walker.walk();
+    debugPrint('DirsFileFilter._filterIsolate: walk done, ${res.allPaths.length} paths');
+    return res;
   }
 }
 
@@ -69,6 +81,12 @@ abstract class _DirsWalker {
   final _pendingDirs = <_PendingDir>[];
   final _visitedDirs = <String>{};
 
+  /// scan roots whose listing threw -- almost always missing storage permission.
+  /// surfaced in [DirsFileFilterResult.failedScanRoots] so the UI can warn
+  /// instead of silently indexing nothing.
+  final _failedScanRoots = <String>{};
+  late final Set<String> _scanRootPaths = _parameters._directoriesToScan.map((e) => e.sourceRaw).toSet();
+
   final _dirFilesPaths = <String>[];
   final _dirSubdirs = <_PendingDir>[];
   bool _dirHasNoMedia = false;
@@ -80,6 +98,7 @@ abstract class _DirsWalker {
 
   DirsFileFilterResult walk() {
     final directoriesToScan = _parameters._directoriesToScan;
+    debugPrint('DBG walk roots=${directoriesToScan.map((e) => "${e.runtimeType}|${e.sourceRaw}").toList()}');
     for (int i = directoriesToScan.length - 1; i >= 0; i--) {
       final d = directoriesToScan[i];
       if (d is! DirectoryIndexLocal) continue;
@@ -101,7 +120,9 @@ abstract class _DirsWalker {
       if (!isNewDir) continue;
 
       _dirHasNoMedia = dir.hasNoMedia;
+      final filesBefore = collector.addedCountForDebug;
       _listDir(dir);
+      debugPrint('DBG walk dir=${dir.path} files=${_dirFilesPaths.length} subdirs=${_dirSubdirs.length} noMedia=$_dirHasNoMedia accepted=${collector.addedCountForDebug - filesBefore}');
       final hasNoMedia = _dirHasNoMedia;
 
       final folder = fillFolderCovers ? Folder.explicit(dir.path) : null;
@@ -122,7 +143,17 @@ abstract class _DirsWalker {
     }
 
     final stats = statsBuilder?.build();
-    return collector.toResult(stats);
+    final result = collector.toResult(stats);
+    if (_failedScanRoots.isNotEmpty) {
+      debugPrint('DirsFileFilter: ${_failedScanRoots.length} scan roots unreadable (storage permission?): $_failedScanRoots');
+    }
+    return DirsFileFilterResult(
+      allPaths: result.allPaths,
+      excludedByNoMedia: result.excludedByNoMedia,
+      folderCovers: result.folderCovers,
+      stats: result.stats,
+      failedScanRoots: _failedScanRoots,
+    );
   }
 
   /// null when the link leads back to one of its parents.
@@ -165,7 +196,12 @@ class _DartDirsWalker extends _DirsWalker {
         if (linksChain == null) return;
       }
       entities = directory.listSync(followLinks: false);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('DBG listDir FAILED ${dir.path}: $e');
+      // -- a scan root that can't even be listed means the app has no storage
+      // -- access (e.g. All-Files-Access reset by an app update). recording it
+      // -- lets the caller warn the user instead of returning an empty library.
+      if (_scanRootPaths.contains(dir.path)) _failedScanRoots.add(dir.path);
       return;
     }
 
@@ -287,6 +323,7 @@ class DirsFileFilterSimple {
 
 class _DirsFilesCollector {
   final allPaths = <String>{};
+  int addedCountForDebug = 0;
   final excludedByNoMedia = <String>{};
   final folderCovers = <Folder, String>{};
 
@@ -322,11 +359,19 @@ class _DirsFilesCollector {
 
     // -- skips if the file is included in one of the excluded folders.
     for (final exc in _directoriesToExclude) {
-      if (path.startsWith(exc.sourceRaw)) return false;
+      if (path.startsWith(exc.sourceRaw)) {
+        debugPrint('DBG reject(excluded) $path <- ${exc.sourceRaw}');
+        return false;
+      }
     }
 
     // -- skip if not in extensions
-    if (!_extensions.isPathValid(path)) return false;
+    if (!_extensions.isPathValid(path)) {
+      if (path.getFilename.endsWith('.mp3') || path.getFilename.endsWith('.flac')) {
+        debugPrint('DBG reject(ext) $path parsedExt=[${path.splitLast('.')}] setSize=${_extensions.extensions.length} sample=${_extensions.extensions.take(5)}');
+      }
+      return false;
+    }
 
     // -- skip if hidden
     if (path.getFilename.startsWith('.')) return false;
@@ -337,7 +382,9 @@ class _DirsFilesCollector {
       return false;
     }
 
-    return allPaths.add(path);
+    final added = allPaths.add(path);
+    if (added) addedCountForDebug++;
+    return added;
   }
 
   DirsFileFilterResult toResult(FilesStats? stats) {
@@ -385,11 +432,15 @@ class DirsFileFilterResult {
   final Map<Folder, String> folderCovers;
   final FilesStats? stats;
 
+  /// scan roots that threw while listing -- missing storage permission.
+  final Set<String> failedScanRoots;
+
   const DirsFileFilterResult({
     required this.allPaths,
     required this.excludedByNoMedia,
     required this.folderCovers,
     required this.stats,
+    this.failedScanRoots = const {},
   });
 }
 
