@@ -116,7 +116,10 @@ class LyricsLRCParsedViewState extends State<LyricsLRCParsedView> with SingleTic
   String _currentLine = '';
 
   static const int _lrcOpacityDurationMS = 500;
-  late final bool _updateOpacityForEmptyLines = !widget.isFullScreenView && widget.fadeOnEmptyLine;
+
+  /// a getter, not a cached field: [fadeOnEmptyLine] is user-togglable while this
+  /// state stays alive (the view is keyed globally), a late final would go stale.
+  bool get _updateOpacityForEmptyLines => !widget.isFullScreenView && widget.fadeOnEmptyLine;
   bool _isCurrentLineEmpty = true;
 
   /// the only thing blur, mask & text opacity follow, so they can never disagree or pop.
@@ -130,6 +133,16 @@ class LyricsLRCParsedViewState extends State<LyricsLRCParsedView> with SingleTic
     if (_isCurrentLineEmpty == empty) return;
     _isCurrentLineEmpty = empty;
     _visibility.animateTo(empty ? 0.0 : 1.0);
+  }
+
+  @override
+  void didUpdateWidget(covariant LyricsLRCParsedView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.fadeOnEmptyLine != widget.fadeOnEmptyLine) {
+      // -- reconcile instantly: turning the fade off must reveal a currently faded-out view,
+      // -- turning it on must fade out right away when sitting on an empty line.
+      _updateIsCurrentLineEmpty(_updateOpacityForEmptyLines && _checkIfTextEmpty(_currentLine));
+    }
   }
 
   void _reportVisibility() => widget.visibilityNotifier?.value = _visibility.value;
@@ -249,7 +262,9 @@ class LyricsLRCParsedViewState extends State<LyricsLRCParsedView> with SingleTic
 
     final uiInfo = lrc.forUiDisplay(
       cal,
-      durationDifferenceToInsertEmptyLine: const Duration(seconds: 1),
+      // -- blank placeholder lines only matter when the view fades them out; when it
+      // -- stays visible, the previous line keeps the highlight through interludes.
+      durationDifferenceToInsertEmptyLine: _updateOpacityForEmptyLines ? const Duration(seconds: 1) : const Duration(days: 365),
       extraOffsetDuration: Duration(milliseconds: -settings.visualDelayMS.value),
       romanizer: Romanizer.inst.lyricsRomanizer(lrc),
     );

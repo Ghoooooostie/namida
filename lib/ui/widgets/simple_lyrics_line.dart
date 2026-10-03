@@ -183,7 +183,8 @@ class _SimpleLyricsLineWidgetState extends State<SimpleLyricsLineWidget> {
     final romanizer = widget.maxSecondaryLines > 0 ? Romanizer.inst.lyricsRomanizer(lrc) : null;
     final uiInfo = lrc.forUiDisplay(
       0,
-      durationDifferenceToInsertEmptyLine: const Duration(seconds: 1),
+      // -- never insert blank placeholder lines: the current line holds until the next one starts
+      durationDifferenceToInsertEmptyLine: const Duration(days: 365),
       extraOffsetDuration: Duration(milliseconds: -settings.visualDelayMS.value),
       romanizer: romanizer,
     );

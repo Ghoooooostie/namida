@@ -195,6 +195,7 @@ class _SettingsController extends _SettingsKeysWriter {
   late final enableVideoPlayback = _key('enableVideoPlayback', true);
   late final enableLyrics = _key('enableLyrics', false);
   late final enableSimpleLyricsLine = _key('enableSimpleLyricsLine', false);
+  late final fadeLyricsOnEmptyLine = _key('fadeLyricsOnEmptyLine', true);
   late final enableSubtitles = _key('enableSubtitles', false);
   late final subtitlesLanguages = _keyList<String>('subtitlesLanguages', const []);
   late final lyricsSource = _keyEnum('lyricsSource', LyricsSource.auto, LyricsSource.values);

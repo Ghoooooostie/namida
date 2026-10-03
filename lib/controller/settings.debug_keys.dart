@@ -272,6 +272,7 @@ extension SettingsControllerDebugKeys on _SettingsController {
     enableVideoPlayback,
     enableLyrics,
     enableSimpleLyricsLine,
+    fadeLyricsOnEmptyLine,
     enableSubtitles,
     subtitlesLanguages,
     lyricsSource,

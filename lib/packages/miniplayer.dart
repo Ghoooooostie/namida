@@ -1062,13 +1062,17 @@ class _AnimatingThumnailWidgetState extends State<_AnimatingThumnailWidget> {
                 child: shoulShowLyricsView
                     ? ValueListenableBuilder(
                         valueListenable: lyricsMaxSize,
-                        builder: (context, lyricsMaxSize, _) => LyricsLRCParsedView(
-                          key: Lyrics.inst.lrcViewKey,
-                          videoOrImage: videoOrImage,
-                          maxWidth: lyricsMaxSize.width,
-                          maxHeight: lyricsMaxSize.height,
-                          insideMiniplayerCard: true,
-                          visibilityNotifier: Lyrics.inst.lrcOverlayVisibility,
+                        builder: (context, lyricsMaxSize, _) => ObxO(
+                          rx: settings.fadeLyricsOnEmptyLine,
+                          builder: (context, fadeOnEmpty) => LyricsLRCParsedView(
+                            key: Lyrics.inst.lrcViewKey,
+                            videoOrImage: videoOrImage,
+                            maxWidth: lyricsMaxSize.width,
+                            maxHeight: lyricsMaxSize.height,
+                            insideMiniplayerCard: true,
+                            visibilityNotifier: Lyrics.inst.lrcOverlayVisibility,
+                            fadeOnEmptyLine: fadeOnEmpty,
+                          ),
                         ),
                       )
                     : KeyedSubtree(

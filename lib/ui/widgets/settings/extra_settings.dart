@@ -48,6 +48,7 @@ enum _ExtraSettingsKeys with SettingKeysBase {
   romanization,
   stretchLyricsDuration,
   simpleLyricsLine,
+  fadeLyricsOnEmptyLine,
   lyricsSaveLocation,
   lyricsFolders,
   imageSource,
@@ -89,6 +90,7 @@ class ExtrasSettings extends SettingSubpageProvider {
     _ExtraSettingsKeys.romanization: [lang.romanization, lang.dictionary],
     _ExtraSettingsKeys.stretchLyricsDuration: [lang.stretchLyricsDuration],
     _ExtraSettingsKeys.simpleLyricsLine: [lang.simpleLyricsLine, lang.simpleLyricsLineSubtitle],
+    _ExtraSettingsKeys.fadeLyricsOnEmptyLine: [lang.fadeLyricsOnEmptyLine, lang.fadeLyricsOnEmptyLineSubtitle],
     _ExtraSettingsKeys.lyricsSaveLocation: [lang.lyricsSaveLocation, lang.lyricsSaveLocationSubtitle, lang.lyricsDeleteWithTrack],
     _ExtraSettingsKeys.lyricsFolders: [lang.lyricsFolders, lang.lyricsFoldersSubtitle],
     _ExtraSettingsKeys.imageSource: [lang.imageSource, lang.album, lang.albums],
@@ -822,6 +824,19 @@ class ExtrasSettings extends SettingSubpageProvider {
                           Lyrics.inst.updateLyrics(currentItem);
                         }
                       },
+                    ),
+                  ),
+                ),
+                getItemWrapper(
+                  key: _ExtraSettingsKeys.fadeLyricsOnEmptyLine,
+                  child: Obx(
+                    (context) => CustomSwitchListTile(
+                      bgColor: getBgColor(_ExtraSettingsKeys.fadeLyricsOnEmptyLine),
+                      icon: Broken.eye_slash,
+                      title: lang.fadeLyricsOnEmptyLine,
+                      subtitle: lang.fadeLyricsOnEmptyLineSubtitle,
+                      value: settings.fadeLyricsOnEmptyLine.valueR,
+                      onChanged: (p0) => settings.fadeLyricsOnEmptyLine.save(!p0),
                     ),
                   ),
                 ),

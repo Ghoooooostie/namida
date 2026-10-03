@@ -24,7 +24,7 @@ class SubtitleOverlay extends StatelessWidget {
         SubtitleRenderMode.none || SubtitleRenderMode.playerInternal => const SizedBox(),
         SubtitleRenderMode.lrc => SimpleLyricsLineWidget(
           customSourceRx: Subtitles.inst.currentSubtitle,
-          respectEndTimestamps: true,
+          respectEndTimestamps: false,
           maxSecondaryLines: 0,
           karaoke: null,
           maxLines: maxLines,
