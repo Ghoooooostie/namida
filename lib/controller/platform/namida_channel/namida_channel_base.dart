@@ -64,6 +64,20 @@ abstract class NamidaChannel {
   /// lets android offer namida as a plugged usb dac's default app.
   Future<void> setUsbDacHandlerEnabled(bool enabled) async {}
 
+  /// keeps AI subtitle recognition running in the background (android foreground
+  /// service + progress notification). the queue calls these while it runs.
+  Future<bool> startAiRecognitionService({
+    required String title,
+    required String text,
+    required String cancelLabel,
+    required String channelName,
+    required String channelDescription,
+  }) async => false;
+
+  Future<bool> updateAiRecognitionNotification({required String title, required String text, required int progress}) async => false;
+
+  Future<bool> stopAiRecognitionService() async => false;
+
   Future<bool> shareFiles(List<String> paths) async => false;
 
   Future<void> logPreviousAbnormalExits() async {}
@@ -76,6 +90,17 @@ abstract class NamidaChannel {
   final _onResume = <FutureOr<void> Function()>[];
   final _onSuspending = <FutureOr<void> Function()>[];
   final _onDestroy = <FutureOr<void> Function()>[];
+  final _onAiRecognitionCancel = <FutureOr<void> Function()>[];
+
+  /// fired when the recognition notification's cancel action is tapped
+  /// (relayed from the foreground service through the channel).
+  void addOnAiRecognitionCancel(FutureOr<void> Function() fn) {
+    _onAiRecognitionCancel.add(fn);
+  }
+
+  void removeOnAiRecognitionCancel(FutureOr<void> Function() fn) {
+    _onAiRecognitionCancel.remove(fn);
+  }
 
   void addOnDestroy(FutureOr<void> Function() fn) {
     _onDestroy.add(fn);

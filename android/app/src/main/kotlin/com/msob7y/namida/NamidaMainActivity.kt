@@ -131,6 +131,8 @@ class NamidaMainActivity : FlutterActivity() {
     val messenger = flutterEngine.dartExecutor.binaryMessenger
     channel = MethodChannel(messenger, CHANNELNAME)
 
+    com.msob7y.namida.anki.AnkiDroidBridge.register(messenger, this)
+
     channel.setMethodCallHandler { call, result ->
       when (call.method) {
         "sdk" -> result.success(Build.VERSION.SDK_INT)
@@ -170,6 +172,45 @@ class NamidaMainActivity : FlutterActivity() {
             PackageManager.DONT_KILL_APP,
           )
           result.success(null)
+        }
+
+        "startAiRecognitionService" -> {
+          try {
+            AiRecognitionService.start(
+              this,
+              call.argument<String>("title") ?: "",
+              call.argument<String>("text") ?: "",
+              call.argument<String>("cancelLabel") ?: "Cancel",
+              call.argument<String>("channelName") ?: "AI",
+              call.argument<String>("channelDescription") ?: "",
+            )
+            result.success(true)
+          } catch (e: Exception) {
+            result.success(false)
+          }
+        }
+
+        "updateAiRecognitionNotification" -> {
+          try {
+            AiRecognitionService.updateNotification(
+              this,
+              call.argument<String>("title") ?: "",
+              call.argument<String>("text") ?: "",
+              call.argument<Int>("progress") ?: -1,
+            )
+            result.success(true)
+          } catch (e: Exception) {
+            result.success(false)
+          }
+        }
+
+        "stopAiRecognitionService" -> {
+          try {
+            AiRecognitionService.stop(this)
+            result.success(true)
+          } catch (e: Exception) {
+            result.success(false)
+          }
         }
         "showToast" -> {
           try {
@@ -504,6 +545,15 @@ class NamidaMainActivity : FlutterActivity() {
     }
     DisplayRefreshRate.applyMax(this)
     LauncherIconController.tryFixLauncherIconIfNeeded();
+  }
+
+  override fun onRequestPermissionsResult(
+    requestCode: Int,
+    permissions: Array<out String>,
+    grantResults: IntArray,
+  ) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    com.msob7y.namida.anki.AnkiDroidBridge.onRequestPermissionsResult(requestCode, grantResults)
   }
 
   override fun onWindowFocusChanged(hasFocus: Boolean) {

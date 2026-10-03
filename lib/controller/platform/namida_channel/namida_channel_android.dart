@@ -73,6 +73,52 @@ class _NamidaChannelAndroid extends NamidaChannel {
   }
 
   @override
+  Future<bool> startAiRecognitionService({
+    required String title,
+    required String text,
+    required String cancelLabel,
+    required String channelName,
+    required String channelDescription,
+  }) async {
+    try {
+      final res = await _channel.invokeMethod<bool?>('startAiRecognitionService', {
+        'title': title,
+        'text': text,
+        'cancelLabel': cancelLabel,
+        'channelName': channelName,
+        'channelDescription': channelDescription,
+      });
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> updateAiRecognitionNotification({required String title, required String text, required int progress}) async {
+    try {
+      final res = await _channel.invokeMethod<bool?>('updateAiRecognitionNotification', {
+        'title': title,
+        'text': text,
+        'progress': progress,
+      });
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> stopAiRecognitionService() async {
+    try {
+      final res = await _channel.invokeMethod<bool?>('stopAiRecognitionService');
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
   Future<void> logPreviousAbnormalExits() async {
     final reports = await _channel.invokeListMethod<Map>('consumeExitReports');
     if (reports == null) return;
@@ -177,6 +223,10 @@ class _NamidaChannelAndroid extends NamidaChannel {
           }
         case 'onDestroy':
           for (final fn in _onDestroy) {
+            fn();
+          }
+        case 'cancelAiRecognition':
+          for (final fn in _onAiRecognitionCancel) {
             fn();
           }
       }

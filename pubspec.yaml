@@ -9,6 +9,12 @@ environment:
 
 dependency_overrides:
   intl: ^0.20.2
+  # vosk_flutter_fixed pulls permission_handler from pub, force the same fork
+  # the app itself uses so both resolve to a single source.
+  permission_handler:
+    git:
+      url: https://github.com/MSOB7YY/flutter-permission-handler
+      path: permission_handler
 
   on_audio_query_platform_interface:
     git:
@@ -60,6 +66,7 @@ dependencies:
   namida_party_relay:
     path: external/party_relay/dart
   uuid: ^4.5.3
+  crypto: ^3.0.6
   qr_flutter: ^4.1.0
   selectable_autolink_text: ^2.6.0
   share_plus:
@@ -221,6 +228,8 @@ dependencies:
   modern_titlebar_buttons: ^1.1.2
   anni_mpris_service: ^0.1.0
   mecab_for_dart: ^2.0.4
+  vosk_flutter_fixed: ^0.1.4
+  sherpa_onnx: ^1.13.0
 
 dev_dependencies:
   flutter_test:
@@ -251,6 +260,7 @@ hooks:
     # - Android: ignored, links ffmpeg-kit's FFmpeg.
     namida_waveform:
       prebuilt_dir: external/ffmpeg_build
+      ffmpeg_dir: external/ffmpeg_build/install/usr/local
 
 flutter_native_splash:
   image: assets/namida_icon.png
