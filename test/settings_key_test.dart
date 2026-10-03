@@ -562,12 +562,12 @@ void main() {
     });
 
     test('duplicates are dropped, the first one keeps its place', () async {
-      final storedPerVariant = ['home', 'folders', 'foldersMusic', 'foldersVideos', 'youtube', 'tracks', 'tracksMusic', 'tracksVideos', 'playlists', 'currentQueue'];
-      final expected = [LibraryTab.home, LibraryTab.folders, LibraryTab.youtube, LibraryTab.tracks, LibraryTab.playlists, LibraryTab.currentQueue];
+      final storedPerVariant = ['home', 'folders', 'foldersMusic', 'foldersVideos', 'podcasts', 'tracks', 'tracksMusic', 'tracksVideos', 'playlists', 'currentQueue'];
+      final expected = [LibraryTab.home, LibraryTab.folders, LibraryTab.podcasts, LibraryTab.tracks, LibraryTab.playlists, LibraryTab.currentQueue];
       await loadFile(settings, {'libraryTabs': storedPerVariant});
       expect(settings.libraryTabs.value, expected);
 
-      final collapsed = ['home', 'folders', 'folders', 'folders', 'youtube', 'tracks', 'tracks', 'tracks', 'playlists', 'currentQueue'];
+      final collapsed = ['home', 'folders', 'folders', 'folders', 'podcasts', 'tracks', 'tracks', 'tracks', 'playlists', 'currentQueue'];
       await loadFile(settings, {
         '_v': 2,
         'libraryTabs': collapsed,

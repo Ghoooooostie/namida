@@ -10,6 +10,7 @@ import 'package:namida/core/translations/language.dart';
 import 'package:namida/core/utils.dart';
 import 'package:namida/ui/pages/settings_page.dart';
 import 'package:namida/ui/widgets/settings/advanced_settings.dart';
+import 'package:namida/ui/widgets/settings/anki_settings.dart';
 import 'package:namida/ui/widgets/settings/backup_restore_settings.dart';
 import 'package:namida/ui/widgets/settings/customization_settings.dart';
 import 'package:namida/ui/widgets/settings/extra_settings.dart';
@@ -61,6 +62,14 @@ extension _SettSearcherUtils on SettingSubpageEnum {
           subtitle: lang.youtubeSettingsSubtitle,
           icon: Broken.video,
           page: () => YoutubeSettings(initialItem: initialItem),
+        );
+
+      case SettingSubpageEnum.anki:
+        return CustomCollapsedListTile(
+          title: () => lang.anki,
+          subtitle: lang.ankiSubtitle,
+          icon: Broken.cards,
+          page: () => AnkiSettingsPage(initialItem: initialItem),
         );
 
       case SettingSubpageEnum.extra:
@@ -141,6 +150,7 @@ class SettingsSearchController {
         PlaybackSettings(),
         CustomizationSettings(),
         YoutubeSettings(),
+        AnkiSettingsPage(),
         ExtrasSettings(),
         BackupAndRestore(),
         AdvancedSettings(),

@@ -71,6 +71,8 @@ import 'package:namida/core/ui_scale.dart';
 import 'package:namida/core/utils.dart';
 import 'package:namida/main_page_wrapper.dart';
 import 'package:namida/packages/scroll_physics_modified.dart';
+import 'package:namida/podcast/controller/podcast_controller.dart';
+import 'package:namida/podcast/controller/podcast_downloads_controller.dart';
 import 'package:namida/ui/pages/onboarding.dart';
 import 'package:namida/ui/pages/party_page.dart';
 import 'package:namida/ui/widgets/custom_widgets.dart';
@@ -356,6 +358,10 @@ Future<void> _secondaryAppInitialization(bool shouldShowOnBoarding) async {
 
       PlaylistController.inst.prepareAllPlaylists(),
       YoutubePlaylistController.inst.prepareAllPlaylists(),
+
+      // -- podcast, independent from the rest, failure must not block anything below.
+      PodcastController.inst.prepareAll(),
+      PodcastDownloadsController.inst.prepare(),
 
       // -- reads [Player], so it can only run once the player is up.
       if (Player.inst.isInitialized) VideoController.inst.initialize(),

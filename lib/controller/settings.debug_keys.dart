@@ -2,6 +2,36 @@
 // ignore_for_file: library_private_types_in_public_api
 part of 'settings_controller.dart';
 
+extension AiSubtitleSettingsDebugKeys on _AiSubtitleSettings {
+  List<RxBase<Object?>> get allKeys => [
+    recognitionMode,
+    localEngine,
+    asrProvider,
+    asrBaseUrl,
+    asrModel,
+    asrApiKey,
+    recognitionPrompt,
+    languageCode,
+    enabledTraditionalEngines,
+    translationProvider,
+    translationBaseUrl,
+    translationModel,
+    translationApiKey,
+    targetLanguage,
+    translationStylePrompt,
+    saveLocation,
+    voskModelName,
+    translateAfterRecognition,
+  ];
+}
+
+extension AnkiSettingsDebugKeys on _AnkiSettings {
+  List<RxBase<Object?>> get allKeys => [
+    config,
+    ankiConnectApiKey,
+  ];
+}
+
 extension EqualizerSettingsDebugKeys on _EqualizerSettings {
   List<RxBase<Object?>> get allKeys => [
     preset,
@@ -109,6 +139,14 @@ extension PlayerSettingsDebugKeys on _PlayerSettings {
     monoAudio,
     audioOutputDevice,
     onInterrupted,
+  ];
+}
+
+extension PodcastSettingsDebugKeys on _PodcastSettings {
+  List<RxBase<Object?>> get allKeys => [
+    downloadLocation,
+    searchEpisodesToo,
+    autoRefreshSubscriptionsMinutes,
   ];
 }
 
@@ -406,10 +444,13 @@ extension SettingsControllerDebugKeys on _SettingsController {
 }
 
 List<RxBase<Object?>> _allSettingsKeys(_SettingsKeysWriter writer) => switch (writer) {
+  _AiSubtitleSettings w => w.allKeys,
+  _AnkiSettings w => w.allKeys,
   _EqualizerSettings w => w.allKeys,
   _ExtraSettings w => w.allKeys,
   _PartySettings w => w.allKeys,
   _PlayerSettings w => w.allKeys,
+  _PodcastSettings w => w.allKeys,
   _ShortcutsSettings w => w.allKeys,
   _SyncSettings w => w.allKeys,
   _TutorialSettings w => w.allKeys,

@@ -18,6 +18,8 @@ import 'package:namida/controller/edit_delete_controller.dart';
 import 'package:namida/controller/file_browser.dart';
 import 'package:namida/controller/indexer_controller.dart';
 import 'package:namida/controller/lyrics_search_utils/lrc_search_utils_selectable.dart';
+import 'package:namida/ui/pages/ai_subtitle/ai_subtitle_actions.dart';
+import 'package:namida/ui/pages/ai_subtitle/ai_subtitle_tasks_page.dart';
 import 'package:namida/controller/music_web_server/music_web_server_base.dart';
 import 'package:namida/controller/navigator_controller.dart';
 import 'package:namida/controller/platform/namida_channel/namida_channel.dart';
@@ -1042,6 +1044,31 @@ Future<void> showGeneralPopupDialog(
                               ),
                               if (isSingle) ...[
                                 SmallListTile(
+                                  title: lang.aiSubtitleOrganize,
+                                  subtitle: lang.aiSubtitleOrganizeSubtitle,
+                                  color: colorDelightened,
+                                  compact: true,
+                                  icon: Broken.record,
+                                  onTap: () {
+                                    NamidaNavigator.inst.closeDialog();
+                                    showAiSubtitleActionChooser(tracks);
+                                  },
+                                ),
+                                SmallListTile(
+                                  title: lang.aiSubtitleOpenTaskList,
+                                  subtitle: lang.aiSubtitleTaskListSubtitle,
+                                  color: colorDelightened,
+                                  compact: true,
+                                  icon: Broken.music_playlist,
+                                  onTap: () {
+                                    NamidaNavigator.inst.closeDialog();
+                                    NamidaNavigator.inst.navigateToRoot(
+                                      const AiSubtitleTasksPage(),
+                                      transition: Transition.native,
+                                    );
+                                  },
+                                ),
+                                SmallListTile(
                                   title: lang.update,
                                   subtitle: tracks.first.path,
                                   color: colorDelightened,
@@ -1279,6 +1306,24 @@ Future<void> showGeneralPopupDialog(
                                       ),
                                     ],
                                   ),
+                                ),
+
+                              /// AI subtitles: transcribe, translate, or both.
+                              /// Kept as a single entry that opens a chooser, and shown
+                              /// for multi selections too, since it works in batch.
+                              if (tracksExisting.isNotEmpty)
+                                SmallListTile(
+                                  color: colorDelightened,
+                                  compact: false,
+                                  title: lang.aiSubtitleOrganize,
+                                  subtitle: isSingle
+                                      ? lang.aiSubtitleOrganizeSubtitle
+                                      : '${lang.aiSubtitleSelectedCount} ${tracks.length}',
+                                  icon: Broken.record,
+                                  onTap: () {
+                                    NamidaNavigator.inst.closeDialog();
+                                    showAiSubtitleActionChooser(tracks);
+                                  },
                                 ),
 
                               if (!isSingle)

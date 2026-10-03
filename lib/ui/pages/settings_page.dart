@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:namida/base/setting_subpage_provider.dart';
 import 'package:namida/class/route.dart';
+import 'package:namida/ui/pages/ai_subtitle/ai_subtitle_center_page.dart';
 import 'package:namida/controller/current_color.dart';
 import 'package:namida/controller/player_controller.dart';
 import 'package:namida/controller/settings_controller.dart';
@@ -20,6 +21,7 @@ import 'package:namida/ui/widgets/circular_percentages.dart';
 import 'package:namida/ui/widgets/custom_widgets.dart';
 import 'package:namida/ui/widgets/jellyfish.dart';
 import 'package:namida/ui/widgets/settings/advanced_settings.dart';
+import 'package:namida/ui/widgets/settings/anki_settings.dart';
 import 'package:namida/ui/widgets/settings/backup_restore_settings.dart';
 import 'package:namida/ui/widgets/settings/customization_settings.dart';
 import 'package:namida/ui/widgets/settings/extra_settings.dart';
@@ -74,6 +76,7 @@ class SettingsPage extends StatelessWidget with NamidaRouteWidget {
                       const PlaybackSettings(),
                       const CustomizationSettings(),
                       const YoutubeSettings(),
+                      const AnkiSettingsPage(),
                       const ExtrasSettings(),
                       const BackupAndRestore(),
                       const AdvancedSettings(),
@@ -176,10 +179,22 @@ class CollapsedSettingTiles extends StatelessWidget {
           page: () => const CustomizationSettings(),
         ),
         CustomCollapsedListTile(
+          title: () => 'AI subtitles',
+          subtitle: 'Transcribe audio and translate the subtitles, on device or through an API',
+          icon: Broken.microphone,
+          page: () => const AiSubtitleCenterPage(),
+        ),
+        CustomCollapsedListTile(
           title: () => lang.youtube,
           subtitle: lang.youtubeSettingsSubtitle,
           icon: Broken.video,
           page: () => const YoutubeSettings(),
+        ),
+        CustomCollapsedListTile(
+          title: () => lang.anki,
+          subtitle: lang.ankiSubtitle,
+          icon: Broken.cards,
+          page: () => const AnkiSettingsPage(),
         ),
         CustomCollapsedListTile(
           title: () => lang.extras,

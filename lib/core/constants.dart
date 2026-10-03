@@ -334,6 +334,8 @@ enum AppPathsBackupEnum {
   SETTINGS_PARTY,
   SETTINGS_TUTORIAL,
   SETTINGS_SHORTCUTS,
+  SETTINGS_ANKI,
+  SETTINGS_PODCAST,
   TRACKS_DB_INFO,
   TRACKS_STATS_DB_INFO,
   LATEST_PLAYED_FOR_SOURCE,
@@ -444,6 +446,8 @@ enum AppPathsBackupEnum {
       AppPathsBackupEnum.SETTINGS_EXTRA ||
       AppPathsBackupEnum.SETTINGS_TUTORIAL ||
       AppPathsBackupEnum.SETTINGS_SHORTCUTS ||
+      AppPathsBackupEnum.SETTINGS_ANKI ||
+      AppPathsBackupEnum.SETTINGS_PODCAST ||
       AppPathsBackupEnum.TOTAL_LISTEN_TIME ||
       AppPathsBackupEnum.PLAYLISTS_METADATA ||
       AppPathsBackupEnum.YT_PLAYLISTS_METADATA ||
@@ -479,6 +483,8 @@ enum AppPathsBackupEnum {
       AppPathsBackupEnum.SETTINGS_PARTY => AppPaths.SETTINGS_PARTY,
       AppPathsBackupEnum.SETTINGS_TUTORIAL => AppPaths.SETTINGS_TUTORIAL,
       AppPathsBackupEnum.SETTINGS_SHORTCUTS => AppPaths.SETTINGS_SHORTCUTS,
+      AppPathsBackupEnum.SETTINGS_ANKI => AppPaths.SETTINGS_ANKI,
+      AppPathsBackupEnum.SETTINGS_PODCAST => AppPaths.SETTINGS_PODCAST,
       AppPathsBackupEnum.TRACKS_DB_INFO => AppPaths.TRACKS_DB_INFO.file.path,
       AppPathsBackupEnum.TRACKS_STATS_DB_INFO => AppPaths.TRACKS_STATS_DB_INFO.file.path,
       AppPathsBackupEnum.LATEST_PLAYED_FOR_SOURCE => AppPaths.LATEST_PLAYED_FOR_SOURCE.file.path,
@@ -603,6 +609,8 @@ class AppPathsBackupEnumCategories {
     AppPathsBackupEnum.SETTINGS_TUTORIAL,
     AppPathsBackupEnum.SETTINGS_SHORTCUTS,
     AppPathsBackupEnum.SETTINGS_YOUTUBE,
+    AppPathsBackupEnum.SETTINGS_ANKI,
+    AppPathsBackupEnum.SETTINGS_PODCAST,
   ];
 
   static List<AppPathsBackupEnum> lyrics = [
@@ -666,6 +674,9 @@ class AppPaths {
   static final SETTINGS_SYNC = _join(_USER_DATA, 'namida_settings_sync.json');
   static final SETTINGS_PARTY = _join(_USER_DATA, 'namida_settings_party.json');
   static final SETTINGS_TUTORIAL = _join(_USER_DATA, 'namida_settings_tutorial.json');
+  static final SETTINGS_ANKI = _join(_USER_DATA, 'namida_settings_anki.json');
+  static final SETTINGS_PODCAST = _join(_USER_DATA, 'namida_settings_podcast.json');
+  static final SETTINGS_AI_SUBTITLE = _join(_USER_DATA, 'namida_settings_ai_subtitle.json');
   static final SETTINGS_SHORTCUTS = _join(_USER_DATA, 'namida_settings_shortcuts.json');
   static final TRACKS_DB_INFO = DbWrapperFileInfo(directory: _USER_DATA, dbName: 'tracks');
   static final TRACKS_STATS_DB_INFO = DbWrapperFileInfo(directory: _USER_DATA, dbName: 'tracks_stats');
@@ -863,6 +874,13 @@ class AppPaths {
   static final VIDEO_ID_STATS_DB_INFO = DbWrapperFileInfo(directory: AppDirs.YOUTUBE_MAIN_DIRECTORY, dbName: 'ytid_stats');
   static final CACHE_VIDEOS_PRIORITY = DbWrapperFileInfo(directory: _USER_DATA, dbName: 'cache_videos_priority');
   static final CACHE_SERVERS_PRIORITY = DbWrapperFileInfo(directory: _USER_DATA, dbName: 'cache_servers_priority');
+
+  // ================= Podcast =================
+  static final PODCAST_SUBSCRIPTIONS = _join(AppDirs.PODCAST_MAIN_DIRECTORY, 'podcast_subscriptions.json');
+  static final PODCAST_FAVOURITES = _join(AppDirs.PODCAST_MAIN_DIRECTORY, 'podcast_favourites.json');
+  static final PODCAST_HISTORY = _join(AppDirs.PODCAST_MAIN_DIRECTORY, 'podcast_history.json');
+  static final PODCAST_EPISODES_CACHE = _join(AppDirs.PODCAST_MAIN_DIRECTORY, 'podcast_episodes_cache.json');
+  static final PODCAST_STATS_DB_INFO = DbWrapperFileInfo(directory: AppDirs.PODCAST_MAIN_DIRECTORY, dbName: 'podcast_stats');
 }
 
 // by claude
@@ -987,6 +1005,18 @@ class AppDirs {
   static final YT_PALETTES = _join(YOUTUBE_MAIN_DIRECTORY, 'Palettes');
   static final YT_DOWNLOAD_TASKS = _join(YOUTUBE_MAIN_DIRECTORY, 'Download Tasks');
 
+  // ================= Podcast =================
+  static final PODCAST_MAIN_DIRECTORY = _join(USER_DATA, 'Podcasts');
+  static final PODCAST_DOWNLOADS_DEFAULT = _join(INTERNAL_STORAGE, 'Podcast Downloads');
+
+  /// 实际生效的播客下载目录, 由设置项控制 (同 [YOUTUBE_DOWNLOADS] 的做法)。
+  static String get PODCAST_DOWNLOADS {
+    final custom = settings.podcast.downloadLocation.value;
+    if (custom.isEmpty) return PODCAST_DOWNLOADS_DEFAULT;
+    return custom.endsWith(_sep) ? custom : '$custom$_sep';
+  }
+  static final PODCAST_ARTWORKS = _join(PODCAST_MAIN_DIRECTORY, 'Podcast Artworks');
+
   // ===========================================
   static final List<String> values = [
     // -- User Data
@@ -1025,6 +1055,9 @@ class AppDirs {
     YT_STATS,
     YT_PALETTES,
     YT_DOWNLOAD_TASKS,
+    // -- Podcast
+    PODCAST_MAIN_DIRECTORY,
+    PODCAST_ARTWORKS,
     // Internal Storage Directories are created on demand
   ];
 }
@@ -1076,6 +1109,7 @@ class AppDocsLinks {
   static const SETTINGS_PLAYBACK = AppDocsLinks._('${_SETTINGS_RAW}3-playback-settings/');
   static const SETTINGS_CUSTOMIZATION = AppDocsLinks._('${_SETTINGS_RAW}4-customization-settings/');
   static const SETTINGS_YOUTUBE = AppDocsLinks._('${_SETTINGS_RAW}5-youtube-settings/');
+  static const SETTINGS_ANKI = AppDocsLinks._('${_SETTINGS_RAW}6-anki-settings/');
   static const SETTINGS_EXTRA = AppDocsLinks._('${_SETTINGS_RAW}6-extras-settings/');
   static const SETTINGS_BACKUP_RESTORE = AppDocsLinks._(_SETTINGS_BACKUP_RESTORE_RAW);
   static const SETTINGS_ADVANCED = AppDocsLinks._('${_SETTINGS_RAW}8-advanced-settings/');
@@ -1094,6 +1128,7 @@ class AppDocsLinks {
     SettingSubpageEnum.playback => SETTINGS_PLAYBACK,
     SettingSubpageEnum.customization => SETTINGS_CUSTOMIZATION,
     SettingSubpageEnum.youtube => SETTINGS_YOUTUBE,
+    SettingSubpageEnum.anki => SETTINGS_ANKI,
     SettingSubpageEnum.extra => SETTINGS_EXTRA,
     SettingSubpageEnum.backupRestore => SETTINGS_BACKUP_RESTORE,
     SettingSubpageEnum.advanced => SETTINGS_ADVANCED,
