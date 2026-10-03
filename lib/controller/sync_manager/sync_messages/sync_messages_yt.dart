@@ -33,7 +33,7 @@ class YTHistoryListensMessage extends BaseMessage {
 }
 
 class YTPlaylistsMessage extends BaseMessage {
-  final Iterable<YoutubePlaylist> playlists;
+  final Iterable<GeneralPlaylist<YoutubeID, YTSortType>> playlists;
 
   const YTPlaylistsMessage({
     required this.playlists,

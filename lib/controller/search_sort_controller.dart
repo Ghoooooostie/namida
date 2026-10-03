@@ -1064,7 +1064,7 @@ class SearchSortController extends SearchPortsProvider {
         if ((sTitle && (isMatch(itemInfo.trName))) ||
             (sCreationDate && isMatch(itemInfo.dateCreatedFormatted)) ||
             (sModifiedDate && isMatch(itemInfo.dateModifiedFormatted)) ||
-            (sComment && isMatch(item.comment)) ||
+            (sComment && isMatch(item.comment ?? '')) ||
             (sMoods && item.moods.any((element) => isMatch(element))) ||
             (sTags && item.tags.any((element) => isMatch(element)))) {
           results.add(playlistName);

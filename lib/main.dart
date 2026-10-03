@@ -137,7 +137,7 @@ Future<bool> _mainAppInitialization() async {
       WindowController.instance?.init(),
       SMTCController.instance?.init(),
       HomeWidgetController.instance?.init(),
-    ].executeAllAndSilentReportErrors();
+    ].whereType<Future<void>>().executeAllAndSilentReportErrors();
 
     ShortcutsController.instance?.init();
 
@@ -190,7 +190,7 @@ Future<bool> _mainAppInitialization() async {
       fetchRootDir(),
       NamidaStorage.inst.getStorageDirectories().then((value) => paths = value),
       NamidaStorage.inst.getStorageDirectoriesAppCache().then((value) => AppDirs.APP_CACHE = value.firstOrNull ?? ''),
-    ].executeAllAndSilentReportErrors();
+    ].whereType<Future<void>>().executeAllAndSilentReportErrors();
 
     // -- android sdk must be initialized first
     if (!await PermissionManager.platform.requestStoragePermission(request: false)) {
@@ -239,26 +239,37 @@ Future<bool> _mainAppInitialization() async {
     logger.error('_mainAppInitialization', e: e, st: st);
   }
 
+  args = Zone.current['args'] as List<String>? ?? [];
+  final ytInfoInitSyncItemsCompleter = Completer<void>();
+
+  /// even tho we don't really need to wait for queue, it's better as to
+  /// minimize startup lag as this changes some app-level vars like color scheme
+  FutureOr<void> prepareLatestQueue() {
+    if (args != null && args.isNotEmpty) {
+      // -- will play from args instead of latest queue
+    } else if (!shouldShowOnBoarding) {
+      return ytInfoInitSyncItemsCompleter.future.whenComplete(QueueController.inst.prepareLatestQueueAndLatestPlayedForSourceAsync);
+    }
+    QueueController.inst.markLatestQueueRestored();
+  }
+
   try {
     final windowRestoration = WindowController.instance?.restorePosition(); // -- requires settings
     TrayController.instance?.init(); // -- requires paths
 
-    args = Zone.current['args'] as List<String>? ?? [];
-
-    final ytInfoInitSyncItemsCompleter = Completer<void>();
-
-    /// even tho we don't really need to wait for queue, it's better as to
-    /// minimize startup lag as this changes some app-level vars like color scheme
-    FutureOr<void> prepareLatestQueue() {
-      if (args != null && args.isNotEmpty) {
-        // -- will play from args instead of latest queue
-      } else if (!shouldShowOnBoarding) {
-        return ytInfoInitSyncItemsCompleter.future.whenComplete(QueueController.inst.prepareLatestQueueAndLatestPlayedForSourceAsync);
+    // 精简构建中的 YouTube 控制器可能没有异步初始化实现；只有返回 Future 时才等待它。
+    try {
+      final youtubeInfoInitialization = YoutubeInfoController.initialize(ytInfoInitSyncItemsCompleter);
+      if (youtubeInfoInitialization is Future) {
+        await youtubeInfoInitialization;
       }
-      QueueController.inst.markLatestQueueRestored();
+    } catch (e, st) {
+      logger.error('YoutubeInfoController.initialize', e: e, st: st);
+    } finally {
+      // -- in the trimmed build nothing completes this completer, yet startup awaits
+      // -- it below and [prepareLatestQueue] waits on it as well, so complete it here.
+      if (!ytInfoInitSyncItemsCompleter.isCompleted) ytInfoInitSyncItemsCompleter.complete();
     }
-
-    YoutubeInfoController.initialize(ytInfoInitSyncItemsCompleter).catchError(logger.report);
 
     if (settings.player.internalPlayer.value.shouldInitializeMPV) {
       mk.MediaKit.ensureInitialized.ignoreError();
@@ -281,27 +292,42 @@ Future<bool> _mainAppInitialization() async {
       ),
       NamidaFFMPEG.configure(),
       ytInfoInitSyncItemsCompleter.future,
-    ].executeAllAndSilentReportErrors();
-
-    // -- best to initialize last, so that tracks are prepared (for info/colors) and rhttp is initialized (for network), etc.
-    try {
-      await Player.inst.initializePlayer().whenComplete(prepareLatestQueue);
-    } catch (e, st) {
-      logger.error('', e: e, st: st);
-    }
-
-    if (SMTCController.instance != null) {
-      Player.inst.refreshNotification();
-    }
-
-    NamidaNavigator.setDefaultSystemUIOverlayStyle.ignoreError();
-    ScrollSearchController.inst.initialize();
-    Subtitles.inst.initialize();
+    ].whereType<Future<void>>().executeAllAndSilentReportErrors();
   } catch (e, st) {
     logger.error('_mainAppInitialization 2', e: e, st: st);
   }
 
-  if (args != null && args.isNotEmpty) {
+  // -- best to initialize last, so that tracks are prepared (for info/colors) and rhttp is initialized (for network), etc.
+  // -- this can't live in the try above: [Player._audioHandler] is a `late` field that the entire widget
+  // -- tree reads while building, so an unrelated failure above must never be able to skip it.
+  try {
+    await Player.inst.initializePlayer().whenComplete(prepareLatestQueue);
+  } catch (e, st) {
+    logger.error('initializePlayer', e: e, st: st);
+  }
+
+  if (Player.inst.isInitialized) {
+    try {
+      if (SMTCController.instance != null) {
+        Player.inst.refreshNotification();
+      }
+
+      Subtitles.inst.initialize();
+    } catch (e, st) {
+      logger.error('post player initialization', e: e, st: st);
+    }
+  } else {
+    logger.error('Player was not initialized, UI will most likely fail to build', e: StateError('uninitialized audio handler'));
+  }
+
+  try {
+    NamidaNavigator.setDefaultSystemUIOverlayStyle.ignoreError();
+    ScrollSearchController.inst.initialize();
+  } catch (e, st) {
+    logger.error('_mainAppInitialization 3', e: e, st: st);
+  }
+
+  if (args.isNotEmpty) {
     NamidaReceiveIntentManager.executeReceivedItems(args, (p) => p, (p) => p);
     Player.inst.play();
   }
@@ -316,22 +342,29 @@ Future<void> _secondaryAppInitialization(bool shouldShowOnBoarding) async {
 
     YoutubeAccountController.initialize();
 
-    await [
-      YoutubeInfoController.utils.fillBackupInfoMap(), // for history videos info.
+    // -- [YoutubeInfoController.utils] is `null` in the trimmed build, and it used to be
+    // -- in the list below, where throwing on it skipped every other initialization below.
+    final youtubeInfoUtils = YoutubeInfoController.utils;
+    if (youtubeInfoUtils != null) {
+      final fillBackupInfoMap = youtubeInfoUtils.fillBackupInfoMap(); // for history videos info.
+      if (fillBackupInfoMap is Future) fillBackupInfoMap.catchError(logger.report);
+    }
 
+    await [
       HistoryController.inst.prepareHistoryFile().then((_) => Indexer.inst.sortMediaTracksAndSubListsAfterHistoryPrepared()), //
       YoutubeHistoryController.inst.prepareHistoryFile(),
 
       PlaylistController.inst.prepareAllPlaylists(),
       YoutubePlaylistController.inst.prepareAllPlaylists(),
 
-      VideoController.inst.initialize(),
+      // -- reads [Player], so it can only run once the player is up.
+      if (Player.inst.isInitialized) VideoController.inst.initialize(),
       YoutubeController.inst.loadDownloadTasksInfoFileAsync(),
 
       NotificationManager.init(),
       FlutterVolumeController.updateShowSystemUI(false),
       NamidaChannel.inst.setCanEnterPip(settings.enablePip.value),
-    ].executeAllAndSilentReportErrors();
+    ].whereType<Future<void>>().executeAllAndSilentReportErrors();
 
     QueueController.inst.prepareAllQueuesFile().catchError(logger.report);
 
@@ -475,12 +508,12 @@ void _initializeIntenties() {
   if (NamidaFeaturesVisibility.recieveSharingIntents) {
     // -- Recieving Initial Android Shared Intent.
     FlutterSharingIntent.instance.getInitialSharing().then(
-      (items) => NamidaReceiveIntentManager.executeReceivedItems(items, (f) => f.value, (f) => f.realPath),
+      (items) => NamidaReceiveIntentManager.executeReceivedItems(items, (f) => f.value, (f) => f.value),
     );
 
     // -- Listening to Android Shared Intents.
     FlutterSharingIntent.instance.getMediaStream().listen(
-      (items) => NamidaReceiveIntentManager.executeReceivedItems(items, (f) => f.value, (f) => f.realPath),
+      (items) => NamidaReceiveIntentManager.executeReceivedItems(items, (f) => f.value, (f) => f.value),
       onError: (err) => NamidaReceiveIntentManager.showErrorPlayingFileSnackbar(error: err.toString()),
     );
   }

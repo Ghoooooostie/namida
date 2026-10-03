@@ -279,7 +279,7 @@ class _SnackbarStackManager {
     for (final e in _snackbarsStackMap.entries) {
       if (e.key == null) {
         for (final s in e.value) {
-          s.addDuration(displayDurationEffective);
+          s.restartDuration();
         }
       }
     }

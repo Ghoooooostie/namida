@@ -145,7 +145,7 @@ class DownloadsAppBarIcon extends StatelessWidget {
       builder: (context, youtubeCount) => ObxO(
         rx: ServerCacheController.inst.tasks,
         builder: (context, serverTasks) {
-          final count = youtubeCount + serverTasks.length;
+          final count = (youtubeCount as num? ?? 0) + serverTasks.length;
           final theme = context.theme;
           return AnimatedShow(
             show: count > 0,
@@ -174,7 +174,7 @@ class DownloadsAppBarIcon extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 1.0),
                         child: Text(
-                          count.formatDecimal(),
+                          count.toInt().formatDecimal(),
                           style: theme.textTheme.displaySmall?.copyWith(fontSize: 10.0),
                         ),
                       ),
@@ -251,13 +251,13 @@ class _ServerCacheQueueSheet extends StatelessWidget {
         ),
         ObxO(
           rx: YoutubeController.inst.activeRawDownloadsCount,
-          builder: (context, youtubeCount) => youtubeCount > 0
+          builder: (context, youtubeCount) => (youtubeCount as num? ?? 0) > 0
               ? Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                   child: CustomListTile(
                     icon: Broken.video_square,
                     title: '${lang.youtube} - ${lang.downloads}',
-                    trailingText: youtubeCount.formatDecimal(),
+                    trailingText: (youtubeCount as num? ?? 0).toInt().formatDecimal(),
                     onTap: () {
                       context.safePop();
                       DownloadsAppBarIcon._openYoutubeDownloads();

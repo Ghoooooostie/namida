@@ -38,10 +38,10 @@ import 'package:namida/core/icon_fonts/broken_icons.dart';
 import 'package:namida/core/namida_converter_ext.dart';
 import 'package:namida/core/translations/language.dart';
 import 'package:namida/core/utils.dart';
-import 'package:namida/youtube/class/youtube_id.dart';
-import 'package:namida/youtube/controller/youtube_controller.dart';
-import 'package:namida/youtube/controller/youtube_info_controller.dart';
-import 'package:namida/youtube/yt_utils.dart';
+import 'package:namida/youtube/class/youtube_id.dart' show YoutubeID;
+import 'package:namida/youtube/controller/youtube_controller.dart' show YoutubeController;
+import 'package:namida/youtube/controller/youtube_info_controller.dart' show YoutubeInfoController;
+import 'package:namida/youtube/yt_utils.dart' show YTUtils;
 
 class Player {
   static final inst = Player._();
@@ -50,6 +50,13 @@ class Player {
   static final audioConfigs = _AudioConfigsManager();
 
   late NamidaAudioVideoHandler<Playable> _audioHandler;
+
+  /// Whether [initializePlayer] has assigned [_audioHandler].
+  /// [_audioHandler] is a `late` field, so every getter below throws
+  /// [LateInitializationError] if read before that happens, and the whole
+  /// widget tree reads them as soon as it builds.
+  bool get isInitialized => _isInitialized;
+  bool _isInitialized = false;
 
   RxBaseCore<bool> get playWhenReady => _audioHandler.playWhenReady;
 
@@ -108,7 +115,7 @@ class Player {
               : YoutubeInfoController.current.currentYTStreams.valueR?.videoStreams.firstOrNull?.duration) ??
           Duration.zero;
     }
-    return playerDuration;
+    return playerDuration ?? Duration.zero;
   }
 
   Duration get getCurrentVideoDuration {
@@ -127,7 +134,7 @@ class Player {
               : YoutubeInfoController.current.currentYTStreams.valueR?.videoStreams.firstOrNull?.duration) ??
           Duration.zero;
     }
-    return playerDuration;
+    return playerDuration ?? Duration.zero;
   }
 
   bool get isCurrentAudioFromCache => _audioHandler.isCurrentAudioFromCache;
@@ -224,6 +231,7 @@ class Player {
     if (Platform.isAndroid || Platform.isIOS) {
       final handler = NamidaAudioVideoHandler<Playable>();
       _audioHandler = handler;
+      _isInitialized = true;
       await AudioService.init(
         builder: () => _MediaSessionAudioHandler(handler),
         config: const AudioServiceConfig(
@@ -237,6 +245,7 @@ class Player {
       );
     } else {
       _audioHandler = NamidaAudioVideoHandler();
+      _isInitialized = true;
     }
 
     void videoInfoListener() {

@@ -768,7 +768,7 @@ class VideoController {
         updateCurrentBytes();
       },
       downloadingStream: (downloadedBytesLength) {
-        downloaded += downloadedBytesLength;
+        downloaded += (downloadedBytesLength as num).toInt();
       },
     );
 

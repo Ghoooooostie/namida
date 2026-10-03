@@ -22,16 +22,16 @@ abstract class LrcSearchUtils {
       final tr = item.track;
       return LrcSearchUtilsSelectable(tr.toTrackExt(), tr);
     } else if (item is YoutubeID) {
-      final info = await (
+      final info = await Future.wait<dynamic>([
         YoutubeInfoController.utils.getVideoName(item.id),
         YoutubeInfoController.utils.getVideoChannelName(item.id),
         YoutubeInfoController.utils.getVideoDuration(item.id),
-      ).wait;
+      ]);
       return LrcSearchUtilsYoutubeID(
         item,
-        videoTitle: info.$1,
-        channelTitle: info.$2,
-        duration: info.$3,
+        videoTitle: info[0] as String?,
+        channelTitle: info[1] as String?,
+        duration: info[2] as Duration?,
       );
     }
     return null;

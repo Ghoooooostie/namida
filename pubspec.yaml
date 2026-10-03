@@ -78,16 +78,14 @@ dependencies:
   native_device_orientation: ^2.1.1
   home_widget: ^0.9.2
   flutter_local_notifications: ^22.0.0-dev.3
-  flutter_sharing_intent:
-    git:
-      url: https://github.com/MSOB7YY/flutter_sharing_intent
+  # was: MSOB7YY fork (private) -> use upstream pub.dev version
+  flutter_sharing_intent: ^2.0.4
   queue: ^3.1.0+2
   jiffy:
     git:
       url: https://github.com/MSOB7YY/jiffy
   playlist_manager:
-    git:
-      url: https://github.com/namidaco/playlist_manager
+    path: external/shims/playlist_manager
   history_manager:
     git:
       url: https://github.com/namidaco/history_manager
@@ -139,8 +137,7 @@ dependencies:
     git:
       url: https://github.com/namidaco/namida_waveform
   basic_audio_handler:
-    git:
-      url: https://github.com/namidaco/basic_audio_handler
+    path: external/shims/basic_audio_handler
   flutter_taglib:
     git:
       url: https://github.com/MSOB7YY/flutter_taglib
@@ -155,15 +152,13 @@ dependencies:
     git:
       url: https://github.com/MSOB7YY/ffmpeg-kit
       path: flutter/flutter
+  # [removed] youtipie / namico_login_manager / namico_subscription_manager
+  # YouTube section & Namico account/subscription were stripped out.
+  # Local stub packages re-provide the (removed) API surface so namida still compiles.
   youtipie:
-    git:
-      url: https://github.com/namidaco/youtipie
-  namico_login_manager:
-    git:
-      url: https://github.com/namidaco/namico_login_manager
+    path: external/shims/youtipie
   namico_subscription_manager:
-    git:
-      url: https://github.com/namidaco/namico_subscription_manager
+    path: external/shims/namico_subscription_manager
 
   # ---- Image Utilities ----
   palette_generator: ^0.3.3

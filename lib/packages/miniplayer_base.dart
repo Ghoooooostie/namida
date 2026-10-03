@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' hide Selectable;
+import 'package:just_audio/just_audio.dart' as just_audio;
 
 import 'package:playlist_manager/class/favourite_playlist.dart';
 import 'package:youtipie/class/streams/video_stream.dart';
@@ -1755,7 +1756,7 @@ class _TrackInfo<E, S> extends StatelessWidget {
 
   Widget _buildFavouriteButton(ThemeData theme) {
     return ObxOClass(
-      rx: textData.favouritePlaylist,
+      rx: textData.favouritePlaylist.obs,
       builder: (context, favouritePlaylist) => NamidaRawLikeButton(
         key: ValueKey(textData.itemToLike),
         size: 32.0,
@@ -2793,7 +2794,7 @@ class PlayerVideoAudioChip extends StatelessWidget {
                           icon: Broken.audio_square,
                           title: lang.auto,
                         ),
-                        ...audioTracks.map(
+                        ...audioTracks.whereType<just_audio.AudioTrack>().map(
                           (e) {
                             final isCurrent = e.isSelected;
                             final title = e.displayName;

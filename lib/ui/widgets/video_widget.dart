@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:just_audio/just_audio.dart' as just_audio;
 
 import 'package:flutter_volume_controller/flutter_volume_controller.dart' show FlutterVolumeController;
 import 'package:native_device_orientation/native_device_orientation.dart';
@@ -1045,7 +1046,7 @@ class NamidaVideoControlsState extends State<NamidaVideoControls> with TickerPro
       rx: Player.inst.audioTracks,
       builder: (context, tracks) {
         if (tracks == null || tracks.length <= 1) return const SizedBox();
-        final selectedTrack = tracks.firstWhereEff((e) => e.isSelected);
+        final selectedTrack = tracks.whereType<just_audio.AudioTrack>().firstWhereEff((e) => e.isSelected);
 
         return NamidaPopupWrapper(
           openOnTap: true,
@@ -1054,7 +1055,7 @@ class NamidaVideoControlsState extends State<NamidaVideoControls> with TickerPro
             _resetTimer();
             setControlsVisibily(true);
           },
-          children: () => tracks.map(
+          children: () => tracks.whereType<just_audio.AudioTrack>().map(
             (e) {
               final isSelected = e.isSelected;
               final titleRaw = e.displayName;
@@ -2993,6 +2994,7 @@ class _YTVideoEndcardsState extends State<_YTVideoEndcards> {
           );
         }
     }
+    return const [];
   }
 
   @override

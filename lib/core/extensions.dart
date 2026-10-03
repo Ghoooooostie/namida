@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
 import 'package:dart_extensions/dart_extensions.dart';
 import 'package:lrc/lrc.dart';
+import 'package:playlist_manager/playlist_manager.dart';
 
 import 'package:namida/class/track.dart';
 import 'package:namida/controller/directory_index.dart';
@@ -31,6 +32,7 @@ import 'package:namida/youtube/class/youtube_id.dart';
 import 'package:namida/youtube/controller/youtube_playlist_controller.dart';
 
 export 'package:dart_extensions/dart_extensions.dart';
+export 'package:playlist_manager/playlist_manager.dart';
 export 'package:youtipie/youtipie.dart' show YTStringUtils;
 
 extension TracksSelectableUtils on Iterable<Selectable> {

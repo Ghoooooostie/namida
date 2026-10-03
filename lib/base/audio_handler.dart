@@ -14,7 +14,6 @@ import 'package:youtipie/class/streams/video_stream_info.dart';
 import 'package:youtipie/class/streams/video_streams_result.dart';
 import 'package:youtipie/core/enum.dart' show LikeStatus;
 
-import 'package:namida/base/yt_video_like_manager.dart';
 import 'package:namida/class/audio_cache_detail.dart';
 import 'package:namida/class/custom_mpv_player.dart';
 import 'package:namida/class/func_execute_limiter.dart';
@@ -113,11 +112,28 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
       _refreshPlatformStatusDependersIsPlaying(ye);
     });
 
-    YtVideoLikeManager.current.currentVideoLikeStatus.addListener(() {
-      if (displayFavouriteButtonAsLikeInNotification) _refreshNotificationFavouriteStatus();
-    });
-    settings.youtube.preferLikeButtonOverFavourite.addListener(_refreshNotificationFavouriteStatus);
-    YoutubeAccountController.current.activeAccountChannel.addListener(_refreshNotificationFavouriteStatus);
+    // -- youtube is stubbed out in the trimmed build, where these managers resolve to `null`.
+    // -- keep this wiring best-effort: it must never prevent the handler (and thus the whole
+    // -- app, since [Player] reads it while the widget tree builds) from being created.
+    try {
+      final likeManager = YtVideoLikeManager.current;
+      if (likeManager != null) {
+        final likeStatus = likeManager.currentVideoLikeStatus;
+        if (likeStatus != null) {
+          likeStatus.addListener(() {
+            if (displayFavouriteButtonAsLikeInNotification) _refreshNotificationFavouriteStatus();
+          });
+        }
+      }
+      settings.youtube.preferLikeButtonOverFavourite.addListener(_refreshNotificationFavouriteStatus);
+      final account = YoutubeAccountController.current;
+      if (account != null) {
+        final channel = account.activeAccountChannel;
+        if (channel != null) channel.addListener(_refreshNotificationFavouriteStatus);
+      }
+    } catch (e, st) {
+      logger.error('audio_handler youtube wiring', e: e, st: st);
+    }
 
     settings.player.repeatMode.addListener(_onRepeatModeChanged);
     forcedRepeatMode.addListener(_onRepeatModeChanged);

@@ -1169,7 +1169,7 @@ Future<String?> showNamidaBottomSheetWithTextField({
                                   width: 32.0,
                                   forceSquared: false,
                                   isImportantInCache: true,
-                                  customUrl: acc.thumbnails.pick()?.url,
+                                  customUrl: (acc as dynamic).thumbnails.pick()?.url,
                                   isCircle: true,
                                 ),
                         ),

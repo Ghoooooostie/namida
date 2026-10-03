@@ -246,7 +246,7 @@ extension YTVideoQuality on String {
   }
 }
 
-extension AudioTrackUtils on AudioTrack {
+extension AudioTrackUtils on YoutubeAudioTrack {
   String? get displayNameOrLangCode {
     final name = displayName;
     if (name != null && name.isNotEmpty) return name;
@@ -705,7 +705,7 @@ extension TrackExecuteActionsUtils on TrackExecuteActions {
             showAddToPlaylistDialog([finalItem.track]);
           },
           youtubeID: (finalItem) {
-            showAddToPlaylistSheet(ids: [finalItem.id], idsNamesLookup: {finalItem.id: info.videoTitle});
+            showAddToPlaylistSheet(ids: [finalItem.id], idsNamesLookup: {finalItem.id: info.videoTitle ?? ''});
           },
         );
       case TrackExecuteActions.openinfo:

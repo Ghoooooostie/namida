@@ -83,13 +83,6 @@ android {
     }
 
     signingConfigs {
-        getByName("debug") {
-            keyAlias = keystoreProperties["keyAlias"] as? String
-            keyPassword = keystoreProperties["keyPassword"] as? String
-            storeFile = (keystoreProperties["storeFile"] as? String)?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as? String
-        }
-
         register("release") {
             keyAlias = keystoreProperties["keyAlias"] as? String
             keyPassword = keystoreProperties["keyPassword"] as? String
@@ -107,7 +100,6 @@ android {
 
     buildTypes {
         named("debug") {
-            signingConfig = signingConfigs.getByName("debug")
             applicationIdSuffix = ".debug"
         }
 

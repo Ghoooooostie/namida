@@ -283,7 +283,7 @@ class _SmartPlaylistResolveContext {
 
 sealed class SmartPlaylistRuleBase<T, T2, F extends SmartPlaylistRuleFilter, S extends SmartPlaylistRuleFilterSource> {
   static ListensSortedMap get topTracksMapListens => HistoryController.inst.topTracksMapListens.value;
-  static FavouritePlaylist<TrackWithDate, Track, SortType> get favouritesMap => PlaylistController.inst.favouritesPlaylist;
+  static FavouritePlaylist<TrackWithDate, Track, SortType> get favouritesMap => PlaylistController.inst.favouritesPlaylist.value;
 
   final SmartPlaylistFilterType type;
   final F filter;

@@ -1,0 +1,28 @@
+name: basic_audio_handler
+description: >-
+  Local re-implementation of the basic_audio_handler API surface used by namida.
+  Provides the AVPlayer interface and the generic BasicAudioHandler playback engine.
+publish_to: "none"
+version: 0.0.1
+
+environment:
+  sdk: ">=3.12.2 <4.0.0"
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # must match namida's fork refs, otherwise pub resolves two copies
+  audio_service:
+    git:
+      url: https://github.com/MSOB7YY/audio_service
+      path: audio_service/
+      ref: minor
+  just_audio:
+    git:
+      url: https://github.com/MSOB7YY/just_audio
+      path: just_audio/
+      ref: video
+  nampack:
+    git:
+      url: https://github.com/MSOB7YY/nampack

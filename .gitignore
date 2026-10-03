@@ -72,3 +72,15 @@ dist/
 scripts/bundle_output*
 lib/core/translations/arb/*
 docs_internal/*
+
+# Local debugging artifacts (adb logs, logcat dumps, screenshots, build logs)
+debug/
+analyze_log.txt
+.stub_members.json
+lib/_t.dart
+
+# Agent session notes (process artifacts, not project docs)
+findings.md
+progress.md
+task_plan.md
+docs/

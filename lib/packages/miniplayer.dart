@@ -228,7 +228,7 @@ class NamidaMiniPlayerTrack extends StatelessWidget {
     return MiniplayerInfoData(
       firstLine: firstLine,
       secondLine: secondLine,
-      favouritePlaylist: PlaylistController.inst.favouritesPlaylist,
+      favouritePlaylist: PlaylistController.inst.favouritePlaylist,
       itemToLike: track,
       onLikeTap: (isLiked) async => PlaylistController.inst.favouriteButtonOnPressed(track),
       onShowAddToPlaylistDialog: () => showAddToPlaylistDialog([track]),
@@ -606,7 +606,7 @@ class NamidaMiniPlayerYoutubeID extends StatelessWidget {
     return MiniplayerInfoData(
       firstLine: firstLine,
       secondLine: secondLine,
-      favouritePlaylist: YoutubePlaylistController.inst.favouritesPlaylist,
+      favouritePlaylist: YoutubePlaylistController.inst.favouritePlaylist,
       itemToLike: video.id,
       onLikeTap: (isLiked) async => YoutubePlaylistController.inst.favouriteButtonOnPressed(video.id),
       onShowAddToPlaylistDialog: () => showAddToPlaylistSheet(ids: [video.id], idsNamesLookup: {}),

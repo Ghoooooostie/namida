@@ -464,6 +464,12 @@ class NamidaMainActivity : FlutterActivity() {
       storageUtilsCompleter.complete(StorageUtils(context))
     } catch (_: Exception) {
     }
+    // 先初始化 JNI 插件，确保 dartjni 在 Dart 代码加载前拿到应用的类加载器。
+    Class.forName(
+      "com.github.dart_lang.jni.JniPlugin",
+      true,
+      context.classLoader,
+    )
     return AudioServicePlugin.getFlutterEngine(context)
   }
 

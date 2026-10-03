@@ -1,0 +1,1 @@
+﻿export 'package:namico_subscription_manager/_stubs_base.dart';

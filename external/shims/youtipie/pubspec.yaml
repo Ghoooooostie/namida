@@ -1,0 +1,14 @@
+name: youtipie
+description: >-
+  Local stub of the youtipie API surface. Types are preserved so namida's YouTube
+  section compiles, but every network operation is a no-op (YouTube removed).
+publish_to: "none"
+version: 0.0.1
+
+environment:
+  sdk: ">=3.12.2 <4.0.0"
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter

@@ -911,7 +911,7 @@ class _UnderwaterAmbienceState extends State<_UnderwaterAmbience> {
 
 /// Owns its fade timer, so it can finish fading out after the page is gone.
 class _AmbienceVoice {
-  static const _curve = CrossFadeCurve.equalPower();
+  static const _curve = Curves.easeInOut;
   static const _tick = Duration(milliseconds: 50);
 
   final player = Player.createTempPlayer();

@@ -863,7 +863,7 @@ Future<void> showGeneralPopupDialog(
                                     color: iconColor,
                                   ),
                                   iconSize: 20.0,
-                                  onPressed: YTChannelSubpage(channelID: firstVideoChannelId).navigate,
+                                  onPressed: YTChannelSubpage(channelID: firstVideoChannelId as String).navigate,
                                 )
                               : const SizedBox();
                         },
