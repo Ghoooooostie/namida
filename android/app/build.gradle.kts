@@ -142,6 +142,8 @@ dependencies {
     }
     implementation("androidx.palette:palette-ktx:1.0.0")
     implementation("com.android.support:support-v4:28.0.0")
+    // AnkiDroid 的 ContentProvider API，用于点词制卡
+    implementation("com.github.ankidroid:Anki-Android:api-v1.1.0")
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.4")
 }
