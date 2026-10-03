@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'dart:isolate';
 import 'dart:math' as math;
 
@@ -1077,11 +1079,17 @@ class SearchSortController extends SearchPortsProvider {
   }
 
   Future<void> sortAll() async {
+    debugPrint('SearchSort.sortAll: 0 tracks');
     await Future.delayed(Duration.zero, _sortTracks);
+    debugPrint('SearchSort.sortAll: 1 albums');
     await Future.delayed(Duration.zero, _sortAlbums);
+    debugPrint('SearchSort.sortAll: 2 artists');
     await Future.delayed(Duration.zero, () => _sortArtistsCurrent(artistType: settings.activeArtistType.value));
+    debugPrint('SearchSort.sortAll: 3 genres');
     await Future.delayed(Duration.zero, () => _sortGenresCurrent(genreType: settings.activeGenreType.value));
+    debugPrint('SearchSort.sortAll: 4 playlists');
     await Future.delayed(Duration.zero, _sortPlaylists);
+    debugPrint('SearchSort.sortAll: 5 done');
   }
 
   void sortMedia(MediaType media, {SortType? sortBy, GroupSortType? groupSortBy, bool? reverse, bool forceSingleSorting = false}) {
