@@ -20,6 +20,7 @@ import 'package:namida/core/enums.dart';
 import 'package:namida/core/extensions.dart';
 import 'package:namida/core/functions.dart';
 import 'package:namida/core/utils.dart';
+import 'package:namida/podcast/class/podcast.dart';
 import 'package:namida/youtube/class/youtube_id.dart';
 
 class QueueController {
@@ -729,6 +730,7 @@ class _QueueSerializer {
     PlayableType.video => Video.explicit(payload),
     PlayableType.trackWithDate => TrackWithDate.fromJson(payload),
     PlayableType.ytVideo => YoutubeID.fromJson(payload),
+    PlayableType.podcastEpisode => PodcastEpisode.fromJson(payload),
   };
 
   static Playable? buildFromJson(dynamic typeKey, dynamic payload) {
@@ -745,6 +747,8 @@ class _QueueSerializer {
       case PlayableType.trackWithDate:
         payload = SyncPathResolver.resolveTrackWithDate(senderDeviceId, TrackWithDate.fromJson(payload)).toJson();
       case PlayableType.ytVideo:
+        break;
+      case PlayableType.podcastEpisode:
         break;
     }
     return (type, payload);
@@ -822,7 +826,7 @@ class _QueueSerializer {
         offset += length;
         final payload = switch (type) {
           PlayableType.track || PlayableType.video => text,
-          PlayableType.trackWithDate || PlayableType.ytVideo => jsonDecode(text),
+          PlayableType.trackWithDate || PlayableType.ytVideo || PlayableType.podcastEpisode => jsonDecode(text),
         };
         items.add(build(type, payload) as T);
         originalIndices?.add(originalIndex);

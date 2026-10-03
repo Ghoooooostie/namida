@@ -56,6 +56,10 @@ import 'package:namida/core/namida_converter_ext.dart';
 import 'package:namida/core/translations/language.dart';
 import 'package:namida/core/utils.dart';
 import 'package:namida/main.dart';
+import 'package:namida/podcast/class/podcast.dart';
+import 'package:namida/podcast/controller/podcast_controller.dart';
+import 'package:namida/podcast/controller/podcast_downloads_controller.dart';
+import 'package:namida/podcast/otomekoe/otomekoe_parse.dart';
 import 'package:namida/ui/dialogs/common_dialogs.dart';
 import 'package:namida/youtube/class/youtube_id.dart';
 import 'package:namida/youtube/controller/sponsorblock_controller.dart';
@@ -296,6 +300,7 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
         final stats = await YoutubeController.inst.statsManager.getStats(finalItem);
         return stats?.audioTrackId;
       },
+      podcastEpisode: (finalItem) async => null,
     );
   }
 
@@ -330,6 +335,10 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
           final duration = itemDuration ?? await YoutubeInfoController.utils.getVideoDuration(finalItem.id);
           final stats = await YoutubeController.inst.statsManager.getStats(finalItem);
           return (stats?.lastPositionInMs, duration?.inMilliseconds);
+        },
+        podcastEpisode: (finalItem) {
+          // -- 播客默认总是续播, 长音频很常见, 从上次位置接着听才合理。
+          return (PodcastController.inst.getPosition(finalItem.id), finalItem.durationMS > 0 ? finalItem.durationMS : itemDuration?.inMilliseconds);
         },
       );
 
@@ -381,7 +390,29 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
           youtubeIdMediaItem: youtubeIdMediaItem,
         );
       },
+      podcastEpisode: (finalItem) {
+        _notificationUpdateItemPodcastEpisode(
+          item: finalItem,
+          itemIndex: currentIndex.value,
+          duration: knownDur,
+        );
+      },
     );
+  }
+
+  void _notificationUpdateItemPodcastEpisode({
+    required PodcastEpisode item,
+    required int itemIndex,
+    required Duration? duration,
+  }) async {
+    final generation = ++_notificationUpdateGeneration;
+    final isItemFavourite = PodcastController.inst.isFavourite(item);
+    final media = item.toMediaItem(currentIndex.value, currentQueue.value.length, duration);
+    if (generation != _notificationUpdateGeneration) return;
+    mediaItem.add(media);
+    playbackState.add(transformEvent(PlaybackEvent(currentIndex: currentIndex.value), isItemFavourite, itemIndex));
+
+    _refreshPlatformStatusDependers(media, playWhenReady.value, isItemFavourite);
   }
 
   bool _isYoutubeIDFavouriteOrLiked(YoutubeID item) {
@@ -819,6 +850,26 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
             final durSecCache = await YoutubeInfoController.utils.getVideoDurationSeconds(finalItem.id);
             return durSecCache;
           },
+          podcastEpisode: (finalItem) async {
+            if (finalItem.durationMS > 0) return finalItem.durationMS ~/ 1000;
+            final ap = Player.createTempPlayer();
+            try {
+              final d = await ap.setSource(
+                ItemPrepareConfig<PodcastEpisode, UriSource>(
+                  await finalItem.toUriSource(),
+                  index: 0,
+                  initialPosition: null,
+                  audioTrackId: null,
+                  videoOptions: null,
+                  item: finalItem,
+                ),
+              );
+              return d?.inSeconds ?? 0;
+            } finally {
+              ap.stop();
+              ap.dispose();
+            }
+          },
         )) ??
         0;
   }
@@ -828,6 +879,7 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
     return item?.execute(
       selectable: (_) => LibraryCategory.localTracks,
       youtubeID: (_) => LibraryCategory.youtube,
+      podcastEpisode: (_) => 'podcast',
     );
   }
 
@@ -849,6 +901,9 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
           playlistID: const PlaylistID(id: k_PLAYLIST_NAME_HISTORY),
         );
         await YoutubeHistoryController.inst.addTracksToHistory([newListen]);
+      },
+      podcastEpisode: (finalItem) async {
+        await PodcastController.inst.addToHistory(finalItem);
       },
     );
   }
@@ -874,7 +929,66 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
       youtubeID: (finalItem) async {
         return _itemToPrepareConfigYoutubeID(item, finalItem, index);
       },
+      podcastEpisode: (finalItem) async {
+        final duration = finalItem.durationMS > 0 ? Duration(milliseconds: finalItem.durationMS) : null;
+        return ItemPrepareConfig<Q, UriSource>(
+          await finalItem.toUriSource(),
+          index: index,
+          initialPosition: await _getItemInitialPosition(item, duration),
+          videoOptions: null,
+          audioTrackId: null,
+          item: item,
+          itemExists: finalItem.isPlayable,
+        );
+      },
     );
+  }
+
+  /// 播客一集开始播放。播客没有视频、没有 ReplayGain, 只要把源挂上即可。
+  Future<void> onItemPlayPodcastEpisode(
+    Q pi,
+    PodcastEpisode item,
+    int index,
+    Function skipItem, {
+    required ItemPreparedPlayerInfo<Q>? preparedItemInfo,
+  }) async {
+    videoPlayerInfo.value = null;
+    Lyrics.inst.resetLyrics(hide: false);
+    WaveformController.inst.resetWaveform();
+    VideoController.inst.currentVideoConfig.resetAll();
+    YoutubeInfoController.current.resetAll();
+
+    Subtitles.inst.onItemChange(pi).ignoreError();
+
+    final duration = item.durationMS > 0 ? Duration(milliseconds: item.durationMS) : null;
+    if (duration != null) _currentItemDuration.value = duration;
+
+    Duration? loadedDuration;
+    try {
+      loadedDuration = await setSource(
+        await item.toUriSource(),
+        index: index,
+        item: pi,
+        videoOptions: null,
+        initialPosition: await _getItemInitialPosition(pi, duration),
+        audioTrackId: null,
+        initialPositionFallback: (fallbackDuration) => _getItemInitialPosition(pi, fallbackDuration),
+      );
+    } catch (e, st) {
+      logger.error('podcast episode play failed', e: e, st: st);
+      if (currentItem.value != pi) return;
+      printy(e, isError: true);
+      skipItem();
+      return;
+    }
+
+    if (loadedDuration != null) _currentItemDuration.value = loadedDuration;
+    if (currentItem.value != pi) return;
+
+    // -- 记一次播放历史, 播客的「继续收听」依赖它。
+    await PodcastController.inst.addToHistory(item);
+
+    refreshNotification(pi);
   }
 
   @override
@@ -915,6 +1029,14 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
 
             await onItemPlayYoutubeID(item, finalItem, index, skipItem, preparedItemInfo: preparedItemInfo, requestedStartPosition: requestedStartPosition);
             tryAddingMixPlaylist(finalItem.id);
+          },
+          podcastEpisode: (finalItem) async {
+            final qs = finalItem.queueSource;
+            if (qs != null && qs.supportResuming) {
+              QueueController.latestPlayedForSourceManager.update(qs, finalItem);
+            }
+
+            await onItemPlayPodcastEpisode(item, finalItem, index, skipItem, preparedItemInfo: preparedItemInfo);
           },
         );
       },
@@ -1145,6 +1267,7 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
             await _applyReplayGain(loudnessDb == null ? null : -loudnessDb.toDouble(), replayGainType);
           }
         },
+        podcastEpisode: (finalItem) async {},
       );
     }
   }
@@ -2320,6 +2443,11 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
     await currentItem?.execute(
       selectable: (finalItem) => _updateTrackLastPosition(finalItem.track, currentPositionMs),
       youtubeID: (finalItem) => _updateYoutubeIDLastPosition(finalItem, currentPositionMs),
+      podcastEpisode: (finalItem) {
+        // -- 播客剩余不足 30 秒视为听完, 下次从头开始。
+        final remaining = finalItem.durationMS - currentPositionMs;
+        PodcastController.inst.savePosition(finalItem.id, remaining <= 30000 ? 0 : currentPositionMs);
+      },
     );
   }
 
@@ -2333,6 +2461,9 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
       },
       youtubeID: (finalItem) async {
         playbackState.add(transformEvent(event, _isYoutubeIDFavouriteOrLiked(finalItem), currentIndex.value));
+      },
+      podcastEpisode: (finalItem) async {
+        playbackState.add(transformEvent(event, PodcastController.inst.isFavourite(finalItem), currentIndex.value));
       },
     );
   }
@@ -2770,6 +2901,10 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
       },
       youtubeID: (finalItem) =>
           finalItem.toMediaItem(finalItem.id, _ytNotificationVideoInfo, _ytNotificationVideoThumbnail, currentIndex.value, currentQueue.value.length, currentItemDuration.value),
+      podcastEpisode: (finalItem) {
+        int durMS = finalItem.durationMS;
+        return Future.value(finalItem.toMediaItem(currentIndex.value, currentQueue.value.length, durMS > 0 ? durMS.milliseconds : currentItemDuration.value));
+      },
     )!;
   }
 
@@ -2778,6 +2913,7 @@ class NamidaAudioVideoHandler<Q extends Playable> extends BasicAudioHandler<Q> {
     return item.execute(
       selectable: (finalItem) => finalItem.toMediaItemId(),
       youtubeID: (finalItem) => finalItem.toMediaItemId(),
+      podcastEpisode: (finalItem) => finalItem.toMediaItemId(),
     )!;
   }
 
@@ -3003,12 +3139,15 @@ extension PlayableExecuter on Playable {
   T? execute<T>({
     required T Function(Selectable finalItem) selectable,
     required T Function(YoutubeID finalItem) youtubeID,
+    T Function(PodcastEpisode finalItem)? podcastEpisode,
   }) {
     final item = this;
     if (item is Selectable) {
       return selectable(item);
     } else if (item is YoutubeID) {
       return youtubeID(item);
+    } else if (item is PodcastEpisode && podcastEpisode != null) {
+      return podcastEpisode(item);
     }
     return null;
   }
@@ -3016,14 +3155,72 @@ extension PlayableExecuter on Playable {
   FutureOr<T?> executeAsync<T>({
     required FutureOr<T?> Function(Selectable finalItem) selectable,
     required FutureOr<T?> Function(YoutubeID finalItem) youtubeID,
+    FutureOr<T?> Function(PodcastEpisode finalItem)? podcastEpisode,
   }) {
     final item = this;
     if (item is Selectable) {
       return selectable(item);
     } else if (item is YoutubeID) {
       return youtubeID(item);
+    } else if (item is PodcastEpisode && podcastEpisode != null) {
+      return podcastEpisode(item);
     }
     return null;
+  }
+}
+
+extension PodcastEpisodeToSource on PodcastEpisode {
+  /// 播客已下载时真正要用的本地路径。
+  ///
+  /// 必须**实时查下载任务表**, 不能只看 [downloadedPath]:
+  /// 播放队列里存的是「点下载之前」的 `PodcastEpisode` 快照, 而 `PodcastEpisode` 是不可变的,
+  /// 下载完成后队列里那份的 `downloadedPath` 永远是 null → 会导致「明明下载了却还在走网络」。
+  String? get resolvedLocalPath {
+    final fromDownloads = PodcastDownloadsController.inst.localPathFor(id);
+    if (fromDownloads != null && fromDownloads.isNotEmpty) return fromDownloads;
+    final own = downloadedPath;
+    if (own != null && own.isNotEmpty) return own;
+    return null;
+  }
+
+  /// 播客播放源。已下载走本地文件, 否则直接流式拉远程 URL
+  /// (播客通常边听边拉, 不适合走 HttpCacheManager 那套缓存)。
+  FutureOr<UriSource> toUriSource() {
+    final local = resolvedLocalPath;
+    if (local != null) {
+      return AudioVideoSource.file(local);
+    }
+    final uri = Uri.tryParse(playableUrl);
+    if (uri == null) return AudioVideoSource.file('');
+    if (uri.path.toLowerCase().endsWith('.m3u8')) {
+      // -- just_audio 只认 HlsSource, 普通 uri 不解析 m3u8;
+      // -- 带 referer 说明来自校验来源的站点 CDN(如 otomekoe), 必须伪装浏览器请求。
+      final hasReferer = refererUrl.isNotEmpty;
+      return HlsSource(uri, headers: {
+        'User-Agent': hasReferer ? otomekoeBrowserUA : 'Namida/${NamidaDeviceInfo.packageInfo?.version ?? 'app'}',
+        if (hasReferer) 'Referer': refererUrl,
+      });
+    }
+    return AudioVideoSource.uri(uri, headers: {
+      'User-Agent': 'Namida/${NamidaDeviceInfo.packageInfo?.version ?? 'app'}',
+    });
+  }
+
+  String toMediaItemId() => 'podcast:$id';
+
+  MediaItem toMediaItem(int currentIndex, int queueLength, Duration? duration) {
+    return MediaItem(
+      id: toMediaItemId(),
+      title: title.isEmpty ? showTitle : title,
+      displayTitle: title.isEmpty ? showTitle : title,
+      displaySubtitle: showTitle,
+      displayDescription: '${currentIndex + 1}/$queueLength',
+      artist: showTitle.isEmpty ? 'Podcast' : showTitle,
+      album: showTitle,
+      genre: 'Podcast',
+      duration: duration ?? Duration(milliseconds: durationMS),
+      artUri: artworkUrl.isNotEmpty ? Uri.tryParse(artworkUrl) : null,
+    );
   }
 }
 

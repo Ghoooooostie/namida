@@ -218,7 +218,8 @@ enum PlayableType {
   track('tr', 0),
   video('v', 1),
   trackWithDate('twd', 2),
-  ytVideo('ytv', 3);
+  ytVideo('ytv', 3),
+  podcastEpisode('pe', 4);
 
   final String jsonKey;
   final int binaryId;

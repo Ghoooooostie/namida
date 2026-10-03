@@ -38,6 +38,7 @@ import 'package:namida/core/icon_fonts/broken_icons.dart';
 import 'package:namida/core/namida_converter_ext.dart';
 import 'package:namida/core/translations/language.dart';
 import 'package:namida/core/utils.dart';
+import 'package:namida/podcast/class/podcast.dart' show PodcastEpisode;
 import 'package:namida/youtube/class/youtube_id.dart' show YoutubeID;
 import 'package:namida/youtube/controller/youtube_controller.dart' show YoutubeController;
 import 'package:namida/youtube/controller/youtube_info_controller.dart' show YoutubeInfoController;
@@ -49,12 +50,16 @@ class Player {
 
   static final audioConfigs = _AudioConfigsManager();
 
-  late NamidaAudioVideoHandler<Playable> _audioHandler;
+  /// The handler object is created eagerly, NOT inside [initializePlayer]:
+  /// [runApp] mounts the widget tree long before that runs (it is awaited last
+  /// in main, after network & library startup), and the tree reads the getters
+  /// below on its very first build. With a `late` field those reads threw
+  /// every frame, starving the isolate event loop -- timers & isolate results
+  /// (the library refresh) were never processed and the whole app wedged.
+  /// Only the platform-side init stays async in [initializePlayer].
+  final NamidaAudioVideoHandler<Playable> _audioHandler = NamidaAudioVideoHandler<Playable>();
 
-  /// Whether [initializePlayer] has assigned [_audioHandler].
-  /// [_audioHandler] is a `late` field, so every getter below throws
-  /// [LateInitializationError] if read before that happens, and the whole
-  /// widget tree reads them as soon as it builds.
+  /// Whether [initializePlayer] has run its platform-side setup.
   bool get isInitialized => _isInitialized;
   bool _isInitialized = false;
 
@@ -228,12 +233,13 @@ class Player {
   StreamSubscription? _notificationClickedSub;
 
   Future<void> initializePlayer() async {
+    // -- [_audioHandler] already exists (created eagerly), so this only wires
+    // -- the platform side. `_isInitialized` must be true before the first
+    // -- await: callers use it to decide whether the getters are safe to read.
+    _isInitialized = true;
     if (Platform.isAndroid || Platform.isIOS) {
-      final handler = NamidaAudioVideoHandler<Playable>();
-      _audioHandler = handler;
-      _isInitialized = true;
       await AudioService.init(
-        builder: () => _MediaSessionAudioHandler(handler),
+        builder: () => _MediaSessionAudioHandler(_audioHandler),
         config: const AudioServiceConfig(
           androidNotificationChannelId: 'com.msob7y.namida',
           androidNotificationChannelName: 'Namida',
@@ -243,9 +249,6 @@ class Player {
           androidStopForegroundOnPause: false,
         ),
       );
-    } else {
-      _audioHandler = NamidaAudioVideoHandler();
-      _isInitialized = true;
     }
 
     void videoInfoListener() {
@@ -607,6 +610,31 @@ class Player {
             }
             return true;
           },
+          podcastEpisode: (_) async {
+            final episodes = tracks.whereType<PodcastEpisode>().toList().withLimit(maxCount);
+
+            if (showSnackBar && episodes.isEmpty) {
+              snackyy(title: lang.note, message: emptyTracksMessage ?? lang.noTracksFound, top: false);
+              return false;
+            }
+            await _addToQueueGated(episodes, insertNext: shouldInsertNext, insertAfterLatest: insertAfterLatest);
+            if (showSnackBar) {
+              final addins = shouldInsertNext ? lang.inserted : lang.added;
+              snackyy(
+                icon: shouldInsertNext ? Broken.redo : Broken.add_circle,
+                message: '$addins: ${episodes.length}',
+                top: false,
+                displayDuration: SnackDisplayDuration.mediumLow,
+                animationDurationMS: 400,
+                merge: SnackbarMerge(
+                  group: shouldInsertNext ? .queueInsertTracks : .queueAddTracks,
+                  count: episodes.length,
+                  toMessage: (total) => '$addins: $total',
+                ),
+              );
+            }
+            return true;
+          },
         ) ??
         false;
   }
@@ -925,6 +953,7 @@ class Player {
                     source: e.sourceNull,
                     watchNull: e.watchNull,
                   ),
+                  podcastEpisode: (e) => e.copyWith(queueSource: source),
                 )
                 as Playable,
       );
@@ -957,6 +986,7 @@ class Player {
               return item.execute(
                 selectable: (finalItem) => finalItem.track.path,
                 youtubeID: (finalItem) => finalItem.id,
+                podcastEpisode: (finalItem) => finalItem.id,
               );
             }
           : null,

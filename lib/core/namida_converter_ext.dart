@@ -83,6 +83,7 @@ import 'package:namida/ui/widgets/custom_widgets.dart';
 import 'package:namida/ui/widgets/network_artwork.dart';
 import 'package:namida/ui/widgets/settings_search_bar.dart';
 import 'package:namida/ui/widgets/stats.dart';
+import 'package:namida/podcast/pages/podcast_home_view.dart';
 import 'package:namida/youtube/class/sponsorblock.dart';
 import 'package:namida/youtube/class/youtube_id.dart';
 import 'package:namida/youtube/controller/youtube_history_controller.dart';
@@ -148,7 +149,7 @@ extension LibraryTabUtils on LibraryTab {
       LibraryTab.foldersVideos => MediaType.folderVideo,
       LibraryTab.home => null,
       LibraryTab.search => null,
-      LibraryTab.youtube => null,
+      LibraryTab.podcasts => null,
       LibraryTab.queues => null,
       LibraryTab.currentQueue => null,
       LibraryTab.favourites => null,
@@ -193,7 +194,7 @@ extension LibraryTabUtils on LibraryTab {
       LibraryTab.foldersMusic => FoldersPage.tracks(),
       LibraryTab.foldersVideos => FoldersPage.videos(),
       LibraryTab.home => const HomePageLocal(),
-      LibraryTab.youtube => const YouTubeHomeView(),
+      LibraryTab.podcasts => const PodcastHomeView(),
       LibraryTab.search => const NamidaDummyPage(),
       LibraryTab.queues => const QueuesPage(),
       LibraryTab.currentQueue => const CurrentQueuePage(),
@@ -465,6 +466,10 @@ extension QueueNameGetter on Queue {
           QueueSourceYoutubeIDEnum.ytHistory ||
           QueueSourceYoutubeIDEnum.ytHistoryFiltered ||
           QueueSourceYoutubeIDEnum.ytMostPlayed => s.title?.translatePlaylistName(),
+          _ => s.title,
+        },
+        final QueueSourcePodcast s => switch (s.s) {
+          QueueSourcePodcastEnum.podcastShow || QueueSourcePodcastEnum.podcastHistory || QueueSourcePodcastEnum.podcastFavourites => s.title?.translatePlaylistName(),
           _ => s.title,
         },
       };
@@ -1936,7 +1941,7 @@ extension LibraryTabL10n on LibraryTab {
     LibraryTab.foldersVideos => "${lang.folders}: ${lang.videos}",
     LibraryTab.home => lang.home,
     LibraryTab.search => lang.search,
-    LibraryTab.youtube => lang.youtube,
+    LibraryTab.podcasts => 'Podcasts',
     LibraryTab.queues => lang.queues,
     LibraryTab.currentQueue => lang.queue,
     LibraryTab.favourites => lang.favourites,
@@ -1973,7 +1978,7 @@ extension LibraryTabL10n on LibraryTab {
     LibraryTab.foldersVideos => Broken.video_play,
     LibraryTab.home => Broken.home_2,
     LibraryTab.search => Broken.search_normal_1,
-    LibraryTab.youtube => Broken.video_square,
+    LibraryTab.podcasts => Broken.headphones,
     LibraryTab.queues => Broken.driver,
     LibraryTab.currentQueue => Broken.row_vertical,
     LibraryTab.favourites => Broken.heart,

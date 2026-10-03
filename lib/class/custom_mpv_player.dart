@@ -324,19 +324,23 @@ class CustomMPVPlayer implements AVPlayer {
         await _tryOpen(
           mk.Media(
             config.source.uri.toString(),
+            httpHeaders: config.source.headers,
             start: config.initialPosition,
           ),
         );
       } else if (videoOptions.videoOnly) {
+        final videoSource = videoOptions.source as UriSource;
         await _tryOpen(
           mk.Media(
-            (videoOptions.source as UriSource).uri.toString(),
+            videoSource.uri.toString(),
+            httpHeaders: videoSource.headers,
             start: config.initialPosition,
           ),
         );
       } else {
         final mainMedia = mk.Media(
           config.source.uri.toString(),
+          httpHeaders: config.source.headers,
           start: config.initialPosition,
         );
 
@@ -936,6 +940,7 @@ class CustomMPVPlayer implements AVPlayer {
 
     final media = mk.Media(
       config.source.uri.toString(),
+      httpHeaders: config.source.headers,
       start: config.initialPosition,
     );
 

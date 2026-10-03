@@ -134,7 +134,7 @@ class DownloadsAppBarIcon extends StatelessWidget {
     if (currentRouteType == RouteType.YOUTUBE_HOME) {
       NamidaNavigator.inst.navigateOffAll(const YouTubeHomeView()); // -- the tab view only reads its initial page once
     } else {
-      ScrollSearchController.inst.animatePageController(LibraryTab.youtube);
+      ScrollSearchController.inst.animatePageController(LibraryTab.podcasts);
     }
   }
 

@@ -38,6 +38,27 @@ class NamidaFFMPEG {
   Future<bool> supportsWebDAV() => _executer.supportsWebDAV();
   Future<bool> supportsSMB() => _executer.supportsSMB();
 
+  /// 把 HLS(m3u8) 音轨无损 remux 成 m4a。部分站点 CDN 校验 UA/Referer, 需调用方传入。
+  Future<bool> remuxHlsToM4a({
+    required String url,
+    required String savePath,
+    String? userAgent,
+    String? referer,
+  }) {
+    return _executer.ffmpegExecute(
+      [
+        if (userAgent != null) ...['-user_agent', userAgent],
+        if (referer != null) ...['-referer', referer],
+        '-i', url,
+        '-vn',
+        '-c:a', 'copy',
+        '-y',
+        savePath,
+      ],
+      noTimeout: true,
+    );
+  }
+
   final currentOperations = <OperationType, Rx<OperationProgress>>{
     OperationType.imageCompress: OperationProgress().obs,
     OperationType.ytdlpThumbnailFix: OperationProgress().obs,
