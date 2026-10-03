@@ -316,7 +316,7 @@ enum LibraryTab {
   foldersMusic,
   foldersVideos,
   search,
-  youtube,
+  podcasts,
   queues,
   currentQueue,
   favourites,
@@ -434,6 +434,20 @@ enum QueueSourceYoutubeIDEnum {
   const QueueSourceYoutubeIDEnum(this.canHaveDuplicates, {this.supportResuming = false});
 }
 
+enum QueueSourcePodcastEnum {
+  podcastShow(true, supportResuming: true),
+  podcastSearch(false),
+  podcastPlayerQueue(true),
+  podcastHistory(true),
+  podcastFavourites(false, supportResuming: true),
+  podcastDownloads(true),
+  podcastQueuePage(true, supportResuming: true);
+
+  final bool canHaveDuplicates;
+  final bool supportResuming;
+  const QueueSourcePodcastEnum(this.canHaveDuplicates, {this.supportResuming = false});
+}
+
 sealed class QueueSourceBase<E extends Enum> {
   final E s;
   bool get canHaveDuplicates;
@@ -533,6 +547,63 @@ class QueueSource extends QueueSourceBase<QueueSourceEnum> {
 
   @override
   String toString() => 'QueueSource(s: $s, title: $title)';
+}
+
+class QueueSourcePodcast extends QueueSourceBase<QueueSourcePodcastEnum> {
+  @override
+  bool get canHaveDuplicates => s.canHaveDuplicates;
+  @override
+  bool get supportResuming => s.supportResuming && QueueSourceBase.resumingEnabled;
+  @override
+  String toText() => s.name;
+
+  const QueueSourcePodcast._(super.s, {super.title}) : super._();
+
+  static QueueSourcePodcast show(String? name) => QueueSourcePodcast._(QueueSourcePodcastEnum.podcastShow, title: name);
+  static const search = QueueSourcePodcast._(QueueSourcePodcastEnum.podcastSearch);
+  static const playerQueue = QueueSourcePodcast._(QueueSourcePodcastEnum.podcastPlayerQueue);
+  static const history = QueueSourcePodcast._(QueueSourcePodcastEnum.podcastHistory);
+  static const favourites = QueueSourcePodcast._(QueueSourcePodcastEnum.podcastFavourites);
+  static const downloads = QueueSourcePodcast._(QueueSourcePodcastEnum.podcastDownloads);
+  static QueueSourcePodcast queuePage(String? name) => QueueSourcePodcast._(QueueSourcePodcastEnum.podcastQueuePage, title: name);
+
+  static QueueSourcePodcast? fromJson(dynamic value) {
+    String? sourceString;
+    String? title;
+    if (value is Map) {
+      sourceString = value['s'];
+      title = value['t'];
+    } else if (value is String) {
+      sourceString = value;
+    }
+
+    if (sourceString != null) {
+      final v = QueueSourcePodcastEnum.values.getEnum(sourceString);
+      if (v != null) return QueueSourcePodcast._(v, title: title);
+    }
+    return null;
+  }
+
+  @override
+  dynamic toJson() {
+    if (title == null) return s.name;
+    return {
+      't': title,
+      's': s.name,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is QueueSourcePodcast && other.s == s && other.title == title;
+  }
+
+  @override
+  int get hashCode => s.hashCode ^ title.hashCode;
+
+  @override
+  String toString() => 'QueueSourcePodcast(s: $s, title: $title)';
 }
 
 class QueueSourceYoutubeID extends QueueSourceBase<QueueSourceYoutubeIDEnum> {
@@ -709,6 +780,14 @@ enum RouteType {
   SEARCH_artistResults,
   SEARCH_albumCustomResults,
 
+  // ----- Podcast -----
+  PODCAST_HOME,
+  PODCAST_SHOW_SUBPAGE,
+  PODCAST_SUBSCRIPTIONS_SUBPAGE,
+  PODCAST_DOWNLOADS_SUBPAGE,
+  PODCAST_FAVOURITES_SUBPAGE,
+  PODCAST_SETTINGS_SUBPAGE,
+
   // ----- Youtube -----
   YOUTUBE_HOME_LOCAL,
   YOUTUBE_HOME,
@@ -805,6 +884,13 @@ enum QueueInsertionType {
     QueueInsertionType.algorithmTimeRange => 7,
     _ => null,
   };
+}
+
+/// 将旧设置中的 YouTube 库标签映射到播客入口。
+LibraryTab? decodeLibraryTabName(String name) {
+  final normalized = name == 'youtube' ? 'podcasts' : name;
+  final tab = LibraryTab.values.getEnum(normalized);
+  return tab?.group;
 }
 
 enum InsertionSortingType {
@@ -934,6 +1020,7 @@ enum SettingSubpageEnum {
   playback,
   customization,
   youtube,
+  anki,
   extra,
   backupRestore,
   advanced,

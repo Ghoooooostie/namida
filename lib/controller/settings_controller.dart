@@ -8,6 +8,7 @@ import 'package:basic_audio_handler/basic_audio_handler.dart';
 import 'package:history_manager/history_manager.dart';
 import 'package:youtipie/core/http.dart';
 
+import 'package:namida/anki/class/anki_models.dart';
 import 'package:namida/base/settings_file_writer.dart';
 import 'package:namida/class/count_per_row.dart';
 import 'package:namida/class/lang.dart';
@@ -16,6 +17,8 @@ import 'package:namida/class/shortcut_data.dart';
 import 'package:namida/controller/directory_index.dart';
 import 'package:namida/controller/file_browser.dart';
 import 'package:namida/controller/platform/shortcuts_manager/shortcuts_manager.dart';
+import 'package:namida/controller/ai_subtitle/ai_subtitle_config.dart';
+import 'package:namida/controller/ai_subtitle/translators/ai_translator.dart';
 import 'package:namida/controller/sync_manager/sync_manager.dart';
 import 'package:namida/core/constants.dart';
 import 'package:namida/core/enums.dart';
@@ -26,9 +29,12 @@ import 'package:namida/youtube/class/sponsorblock.dart';
 import 'package:namida/youtube/controller/youtube_account_controller.dart';
 
 part 'settings.debug_keys.dart';
+part 'settings.anki.dart';
+part 'settings.ai_subtitle.dart';
 part 'settings.equalizer.dart';
 part 'settings.extra.dart';
 part 'settings.keys.dart';
+part 'settings.podcast.dart';
 part 'settings.player.dart';
 part 'settings.shortcuts.dart';
 part 'settings.party.dart';
@@ -47,10 +53,13 @@ class _SettingsController extends _SettingsKeysWriter {
       this.equalizer.prepareSettingsFile(),
       this.player.prepareSettingsFile(),
       this.youtube.prepareSettingsFile(),
+      this.podcast.prepareSettingsFile(),
       this.extra.prepareSettingsFile(),
       this.sync.prepareSettingsFile(),
       this.party.prepareSettingsFile(),
       this.tutorial.prepareSettingsFile(),
+      this.anki.prepareSettingsFile(),
+      this.aiSubtitle.prepareSettingsFile(),
       if (isDesktop) this.shortcuts.prepareSettingsFile(),
     ]);
     final legacyWindowBounds = _legacyWindowBounds;
@@ -74,8 +83,11 @@ class _SettingsController extends _SettingsKeysWriter {
   bool get syncable => true;
 
   final equalizer = _EqualizerSettings._internal();
+  final anki = _AnkiSettings._internal();
+  final aiSubtitle = _AiSubtitleSettings._internal();
   final player = _PlayerSettings._internal();
   final youtube = _YoutubeSettings._internal();
+  final podcast = _PodcastSettings._internal();
   final extra = _ExtraSettings._internal();
   final tutorial = _TutorialSettings._internal();
   final sync = _SyncSettings._internal();
@@ -91,7 +103,7 @@ class _SettingsController extends _SettingsKeysWriter {
   late final staticColorDark = _key<int?>('staticColorDark_v2', null);
   late final libraryTabs = _keyEnumList(
     'libraryTabs',
-    const [LibraryTab.home, LibraryTab.tracks, LibraryTab.artists, LibraryTab.playlists, LibraryTab.folders, LibraryTab.youtube],
+    const [LibraryTab.home, LibraryTab.tracks, LibraryTab.artists, LibraryTab.playlists, LibraryTab.folders, LibraryTab.podcasts],
     LibraryTab.values,
     item: const _LibraryTabGroupCodec(),
   );
@@ -498,8 +510,7 @@ class _LibraryTabGroupCodec extends _SettingsCodec<LibraryTab> {
 
   @override
   LibraryTab? decode(dynamic json) {
-    final tab = json is String ? LibraryTab.values.getEnum(json) : null;
-    return tab?.group;
+    return json is String ? decodeLibraryTabName(json) : null;
   }
 
   @override
