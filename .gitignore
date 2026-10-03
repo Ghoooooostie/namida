@@ -78,9 +78,22 @@ debug/
 analyze_log.txt
 .stub_members.json
 lib/_t.dart
+*.db
+*.apk
+*.aab
+*.stackdump
+# scratch screenshots / dumps dropped next to the app entry points
+/*.png
+/android/*.png
+/android/*.db
+/android/*.txt
+/android/*.json
+/*.txt
+/*.json
 
 # Agent session notes (process artifacts, not project docs)
 findings.md
 progress.md
 task_plan.md
 docs/
+.codebuddy/
